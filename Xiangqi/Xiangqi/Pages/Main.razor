@@ -16,13 +16,6 @@
         {"empty",""}
     };
 
-    @* protected override void OnInitialized()
-    {
-        board = new List<string>(rows * cols);
-        for (int i = 0; i < rows * cols; i++)
-            board.Add(Symbols["empty"]);
-        InitNewGame();
-    } *@
     protected override void OnInitialized()
     {
         board = new List<string>(rows * cols);
@@ -35,13 +28,11 @@
     }
 
     // ---------- Helpers --------- //
-    @* string GetCell(int row, int col)
-    {
-        return board[row * cols + col];
-    } *@
     string GetCell(int row, int col)
     {
-        int index = row * cols + col;
+        if (row < 0 || row >= rows || col < 0 || col >= cols) return "";
+        int index = GetIndex(row, col);
+        if (index < 0 || index >= board.Count) return "";
         string key = board[index]; // e.g. "red_chariot" or "empty"
 
         if (key != null && Symbols.ContainsKey(key))
@@ -52,57 +43,32 @@
         return "";
     }
 
-    @* void PlacePiece(int row, int col, string key)
-    {
-        int index = row * cols + col;
-        board[index] = Symbols[key];
-    } *@
     void PlacePiece(int row, int col, string key)
     {
-        int index = row * cols + col;
+        if (row < 0 || row >= rows || col < 0 || col >= cols) return;
+        int index = GetIndex(row, col);
+        if (index < 0 || index >= board.Count) return;
+        @* int index = row * cols + col; *@
         board[index] = key; // store "red_chariot", "blue_pawn", etc.
     }
 
-    @* string GetPieceColorClass(int row, int col)
-    {
-        string cellValue = board[row * cols + col];
-
-        // red pieces
-        if (cellValue == Symbols["red_chariot"]
-            || cellValue == Symbols["red_horse"]
-            || cellValue == Symbols["red_pawn"]
-            || cellValue == Symbols["red_cannon"]
-            || cellValue == Symbols["red_elephant"]
-            || cellValue == Symbols["red_advisor"]
-            || cellValue == Symbols["red_king"])
-        {
-            return "red";
-        }
-
-        // blue pieces
-        if (cellValue == Symbols["blue_chariot"]
-            || cellValue == Symbols["blue_horse"]
-            || cellValue == Symbols["blue_pawn"]
-            || cellValue == Symbols["blue_cannon"]
-            || cellValue == Symbols["blue_elephant"]
-            || cellValue == Symbols["blue_advisor"]
-            || cellValue == Symbols["blue_king"])
-        {
-            return "blue";
-        }
-
-        // default
-        return "empty";
-    } *@
     // GetPieceColorClass compares keys
     string GetPieceColorClass(int row, int col)
     {
-        int index = row * cols + col;
+        if (row < 0 || row >= rows || col < 0 || col >= cols) return "empty";
+        int index = GetIndex(row, col);
+        if (index < 0 || index >= board.Count) return "empty";
+        @* int index = row * cols + col; *@
         string key = board[index];
 
         if (key != null && key.StartsWith("red_")) return "red";
         if (key != null && key.StartsWith("blue_")) return "blue";
         return "empty";
+    }
+
+    int GetIndex(int row, int col)
+    {
+        return row * cols + col;
     }
 
     // ---------- Init ------------ //
@@ -122,6 +88,47 @@
         // Red pawns
         for (int c = 0; c < cols; c += 2) PlacePiece(6, c, "red_pawn");
     }
+
+    // ---------- inputs ----------- //
+    int selectedIndex = -1;
+
+    void CellClicked(int row, int col)
+    {
+        if (row < 0 || row >= rows || col < 0 || col >= cols) return;
+        int index = GetIndex(row, col);
+        if (index < 0 || index >= board.Count) return;
+
+        // If nothing selected, select this cell if not empty
+        if (selectedIndex == -1)
+        {
+            if (board[index] != "empty")
+            {
+                selectedIndex = index;
+            }
+            return;
+        }
+
+        // If same cell clicked, clear selection
+        if (selectedIndex == index)
+        {
+            selectedIndex = -1;
+            return;
+        }
+
+        // Move piece from selectedIndex to index
+        MovePiece(selectedIndex, index);
+        selectedIndex = -1;
+    }
+
+    void MovePiece(int fromIndex, int toIndex)
+    {
+        if (fromIndex < 0 || toIndex < 0) return;
+        string key = board[fromIndex];
+        if (key == "empty") return;
+
+        board[toIndex] = key;
+        board[fromIndex] = "empty";
+    }
 }
 
 <style>
@@ -134,6 +141,8 @@
     text-align: center;
     vertical-align: middle;
     }
+    .selected { outline: 3px solid gold; }
+    .xiangqi td { cursor: pointer; } /* optional */
     .xiangqi th { height: 28px; font-weight: bold; }
     .row-label { width: 28px; }
     .river td { background: #f8f8f8; }
@@ -164,7 +173,10 @@
                     <td class="row-label">@((10 - row))</td>
                     @for (int col = 0; col < cols; col++)
                     {
-                        <td>
+                        int index = row * cols + col;
+                        string selectedClass = index == selectedIndex ? "selected" : "";
+
+                        <td class="@selectedClass" @onclick="() => CellClicked(row, col)">
                             <span class="piece @(GetPieceColorClass(row, col))">
                                 @GetCell(row, col)
                             </span>
