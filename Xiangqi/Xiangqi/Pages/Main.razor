@@ -1,5 +1,4 @@
 ﻿@page "/"
-@* @rendermode InteractiveServer *@
 <PageTitle>Xiangqi</PageTitle>
 
 
@@ -7,7 +6,14 @@
 {
     int rows = 10;
     int cols = 9;
-    List<string>? board;
+    int selectedIndex = -1;
+
+    enum PieceColor { Empty, Red, Blue }
+    enum PieceType { None, Chariot, Horse, Elephant, Advisor, King, Cannon, Pawn }
+
+    record Piece(PieceType Type, PieceColor Color, string Key);
+    List<Piece> pieces; // length rows*cols
+    HashSet<int> legalMoves = new();
 
     readonly Dictionary<string, string> Symbols = new()
     {
@@ -16,59 +22,99 @@
         {"empty",""}
     };
 
+    static readonly Dictionary<string, Piece> KeyToPiece = new()
+    {
+        { "empty", new Piece(PieceType.None, PieceColor.Empty, "empty") },
+
+        { "red_chariot", new Piece(PieceType.Chariot, PieceColor.Red, "red_chariot") },
+        { "red_horse",   new Piece(PieceType.Horse,   PieceColor.Red, "red_horse") },
+        { "red_elephant",new Piece(PieceType.Elephant,PieceColor.Red, "red_elephant") },
+        { "red_advisor", new Piece(PieceType.Advisor, PieceColor.Red, "red_advisor") },
+        { "red_king",    new Piece(PieceType.King,    PieceColor.Red, "red_king") },
+        { "red_cannon",  new Piece(PieceType.Cannon,  PieceColor.Red, "red_cannon") },
+        { "red_pawn",    new Piece(PieceType.Pawn,    PieceColor.Red, "red_pawn") },
+
+        { "blue_chariot", new Piece(PieceType.Chariot, PieceColor.Blue, "blue_chariot") },
+        { "blue_horse",   new Piece(PieceType.Horse,   PieceColor.Blue, "blue_horse") },
+        { "blue_elephant",new Piece(PieceType.Elephant,PieceColor.Blue, "blue_elephant") },
+        { "blue_advisor", new Piece(PieceType.Advisor, PieceColor.Blue, "blue_advisor") },
+        { "blue_king",    new Piece(PieceType.King,    PieceColor.Blue, "blue_king") },
+        { "blue_cannon",  new Piece(PieceType.Cannon,  PieceColor.Blue, "blue_cannon") },
+        { "blue_pawn",    new Piece(PieceType.Pawn,    PieceColor.Blue, "blue_pawn") },
+    };
+
     protected override void OnInitialized()
     {
-        board = new List<string>(rows * cols);
+        pieces = new List<Piece>(rows * cols);
         for (int i = 0; i < rows * cols; i++)
-        {
-            board.Add("empty"); // store the key string
-        }
+            pieces.Add(KeyToPiece["empty"]);
 
         InitNewGame();
     }
 
     // ---------- Helpers --------- //
-    string GetCell(int row, int col)
+
+    void AddMoveIfValid(int row, int col)
     {
-        if (row < 0 || row >= rows || col < 0 || col >= cols) return "";
-        int index = GetIndex(row, col);
-        if (index < 0 || index >= board.Count) return "";
-        string key = board[index]; // e.g. "red_chariot" or "empty"
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return;
 
-        if (key != null && Symbols.ContainsKey(key))
-        {
-            return Symbols[key]; // return the Unicode char (or empty string for "empty")
-        }
-
-        return "";
+        int moveIndex = GetIndex(row, col);
+        legalMoves.Add(moveIndex);
     }
 
-    void PlacePiece(int row, int col, string key)
+    string GetCell(int row, int col)
     {
-        if (row < 0 || row >= rows || col < 0 || col >= cols) return;
         int index = GetIndex(row, col);
-        if (index < 0 || index >= board.Count) return;
-        @* int index = row * cols + col; *@
-        board[index] = key; // store "red_chariot", "blue_pawn", etc.
+        if (index < 0 || index >= pieces.Count)
+            return "";
+        var piece = pieces[index];
+        if (piece == null || piece.Type == PieceType.None)
+            return "";
+        if (Symbols.TryGetValue(piece.Key, out var s))
+            return s;
+        return "";
     }
 
     // GetPieceColorClass compares keys
     string GetPieceColorClass(int row, int col)
     {
-        if (row < 0 || row >= rows || col < 0 || col >= cols) return "empty";
-        int index = GetIndex(row, col);
-        if (index < 0 || index >= board.Count) return "empty";
-        @* int index = row * cols + col; *@
-        string key = board[index];
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return "empty";
 
-        if (key != null && key.StartsWith("red_")) return "red";
-        if (key != null && key.StartsWith("blue_")) return "blue";
-        return "empty";
+        int index = GetIndex(row, col);
+        if (index < 0 || index >= pieces.Count)
+            return "empty";
+
+        var piece = pieces[index];
+        if (piece == null)
+            return "empty";
+
+        switch (piece.Color)
+        {
+            case PieceColor.Red:
+                return "red";
+            case PieceColor.Blue:
+                return "blue";
+            default:
+                return "empty";
+        }
     }
 
     int GetIndex(int row, int col)
     {
         return row * cols + col;
+    }
+
+    bool IsEmpty(int index)
+    {
+        return pieces[index].Type == PieceType.None;
+    }
+
+    bool IsEnemy(int fromIndex, int toIndex)
+    {
+        return pieces[toIndex].Color != pieces[fromIndex].Color
+            && pieces[toIndex].Type != PieceType.None;
     }
 
     // ---------- Init ------------ //
@@ -79,33 +125,39 @@
         // Black cannons
         PlacePiece(2, 1, "blue_cannon"); PlacePiece(2, 7, "blue_cannon");
         // Black pawns
-        for (int c = 0; c < cols; c += 2) PlacePiece(3, c, "blue_pawn");
+        for (int c = 0; c < cols; c += 2)
+            PlacePiece(3, c, "blue_pawn");
 
         // Red (bottom, row 9)
         PlacePiece(9, 0, "red_chariot"); PlacePiece(9, 1, "red_horse"); PlacePiece(9, 2, "red_elephant"); PlacePiece(9, 3, "red_advisor"); PlacePiece(9, 4, "red_king"); PlacePiece(9, 5, "red_advisor"); PlacePiece(9, 6, "red_elephant"); PlacePiece(9, 7, "red_horse"); PlacePiece(9, 8, "red_chariot");
         // Red cannons
         PlacePiece(7, 1, "red_cannon"); PlacePiece(7, 7, "red_cannon");
         // Red pawns
-        for (int c = 0; c < cols; c += 2) PlacePiece(6, c, "red_pawn");
+        for (int c = 0; c < cols; c += 2)
+            PlacePiece(6, c, "red_pawn");
     }
 
     // ---------- inputs ----------- //
-    int selectedIndex = -1;
 
     void CellClicked(int row, int col)
     {
-        if (row < 0 || row >= rows || col < 0 || col >= cols) return;
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return;
         int index = GetIndex(row, col);
-        if (index < 0 || index >= board.Count) return;
+        if (pieces == null)
+            return;
+        if (index < 0 || index >= pieces.Count)
+            return;
 
-        // If nothing selected, select this cell if not empty
         if (selectedIndex == -1)
         {
-            if (board[index] != "empty")
+            var piece = pieces[index];
+            if (piece != null && piece.Type != PieceType.None)
             {
                 selectedIndex = index;
+                GenerateLegalMoves(index);
+                return;
             }
-            return;
         }
 
         // If same cell clicked, clear selection
@@ -118,16 +170,118 @@
         // Move piece from selectedIndex to index
         MovePiece(selectedIndex, index);
         selectedIndex = -1;
+
+        legalMoves.Clear();
     }
 
     void MovePiece(int fromIndex, int toIndex)
     {
-        if (fromIndex < 0 || toIndex < 0) return;
-        string key = board[fromIndex];
-        if (key == "empty") return;
+        if (fromIndex < 0 || toIndex < 0)
+            return;
+        var piece = pieces[fromIndex];
+        if (piece == null || piece.Type == PieceType.None)
+            return;
+        pieces[toIndex] = piece;
+        pieces[fromIndex] = KeyToPiece["empty"];
+    }
 
-        board[toIndex] = key;
-        board[fromIndex] = "empty";
+    @* void PlacePiece(int row, int col, string key)
+    {
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return;
+        int index = GetIndex(row, col);
+        if (index < 0 || index >= pieces.Count)
+            return;
+        if (!KeyToPiece.TryGetValue(key, out var piece))
+            piece = KeyToPiece["empty"];
+        pieces[index] = piece;
+    } *@
+    void PlacePiece(int row, int col, string key)
+    {
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return;
+
+        int index = GetIndex(row, col);
+
+        if (index < 0 || index >= pieces.Count)
+            return;
+
+        Piece piece;
+
+        if (KeyToPiece.ContainsKey(key))
+        {
+            piece = KeyToPiece[key];
+        }
+        else
+        {
+            piece = KeyToPiece["empty"];
+        }
+
+        pieces[index] = piece;
+    }
+
+    // Piece move types
+    void GenerateLegalMoves(int index)
+    {
+        legalMoves.Clear();
+
+        var piece = pieces[index];
+        if (piece == null || piece.Type == PieceType.None)
+            return;
+
+        switch (piece.Type)
+        {
+            @* case PieceType.Chariot:
+                GenerateChariotMoves(index);
+                break;
+
+            case PieceType.Horse:
+                GenerateHorseMoves(index);
+                break;
+
+            case PieceType.Cannon:
+                GenerateCannonMoves(index);
+                break; *@
+
+            case PieceType.Pawn:
+                GeneratePawnMoves(index);
+                break;
+
+            @* case PieceType.King:
+                GenerateKingMoves(index);
+                break;
+
+            case PieceType.Advisor:
+                GenerateAdvisorMoves(index);
+                break;
+
+            case PieceType.Elephant:
+                GenerateElephantMoves(index);
+                break; *@
+        }
+    }
+
+    void GeneratePawnMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        int forwardDirection = piece.Color == PieceColor.Red ? -1 : 1;
+
+        // Forward move
+        AddMoveIfValid(row + forwardDirection, col);
+
+        bool crossedRiver =
+            (piece.Color == PieceColor.Red && row <= 4) ||
+            (piece.Color == PieceColor.Blue && row >= 5);
+
+        if (crossedRiver)
+        {
+            AddMoveIfValid(row, col - 1); // left
+            AddMoveIfValid(row, col + 1); // right
+        }
     }
 }
 
@@ -151,6 +305,16 @@
     .piece { display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:26px; }
     .piece.red { color: crimson; font-weight: bold; }
     .piece.blue { color: royalblue; font-weight: bold; }
+
+/* Cell that is a possible move */
+.possible-move {
+    background-color: #ffe08a;   /* soft yellow */
+}
+
+/* Optional: make it look clickable */
+.possible-move:hover {
+    background-color: #ffd24d;
+}
 </style>
 
 
@@ -176,7 +340,7 @@
                         var renderRow = row;
                         var renderCol = col;
                         int index = renderRow * cols + renderCol;
-                        <td class="@(index==selectedIndex? "selected":"")" @onclick="() => CellClicked(renderRow, renderCol)">
+                        <td class="@(index == selectedIndex ? "selected" : "") @(legalMoves.Contains(index) ? "possible-move" : "")" @onclick="() => CellClicked(renderRow, renderCol)">
                             <span class="piece @(GetPieceColorClass(row, col))">
                                 @GetCell(row, col)
                             </span>
