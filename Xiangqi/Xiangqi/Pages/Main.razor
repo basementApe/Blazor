@@ -13,16 +13,16 @@
 
     record Piece(PieceType Type, PieceColor Color, string Key);
     List<Piece> pieces; // length rows*cols
-    HashSet<int> legalMoves = new();
+    HashSet<int> legalMoves = new HashSet<int>();
 
-    readonly Dictionary<string, string> Symbols = new()
+    static readonly Dictionary<string, string> Symbols = new Dictionary<string, string>()
     {
         {"red_chariot","車"}, {"red_horse","馬"}, {"red_elephant","相"}, {"red_advisor","仕"}, {"red_king","帥"}, {"red_cannon","炮"}, {"red_pawn","兵"},
         {"blue_chariot","車"}, {"blue_horse","馬"}, {"blue_elephant","象"}, {"blue_advisor","士"}, {"blue_king","將"}, {"blue_cannon","砲"}, {"blue_pawn","卒"},
         {"empty",""}
     };
 
-    static readonly Dictionary<string, Piece> KeyToPiece = new()
+    static readonly Dictionary<string, Piece> KeyToPiece = new Dictionary<string, Piece>()
     {
         { "empty", new Piece(PieceType.None, PieceColor.Empty, "empty") },
 
@@ -54,25 +54,52 @@
 
     // ---------- Helpers --------- //
 
-    void AddMoveIfValid(int row, int col)
+    void AddMoveIfValid(int fromIndex, int row, int col)
     {
         if (row < 0 || row >= rows || col < 0 || col >= cols)
             return;
 
         int moveIndex = GetIndex(row, col);
+
+        Piece fromPiece = pieces[fromIndex];
+        Piece targetPiece = pieces[moveIndex];
+
+        if (fromPiece.Color == targetPiece.Color)   // same team!
+            return;
+
         legalMoves.Add(moveIndex);
+    }
+
+    bool CheckIfOccupied(int row, int col)      // some pieces can't move if their path is blocked while the cannon *needs* to be blocked to be able to capture
+    {
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return true;
+
+        int moveIndex = GetIndex(row, col);
+
+        Piece targetPiece = pieces[moveIndex];
+
+        if (targetPiece.Type != PieceType.None)
+            return true;
+
+        return false;
     }
 
     string GetCell(int row, int col)
     {
         int index = GetIndex(row, col);
+
         if (index < 0 || index >= pieces.Count)
             return "";
-        var piece = pieces[index];
-        if (piece == null || piece.Type == PieceType.None)
+
+        Piece piece = pieces[index];
+
+        if (piece.Type == PieceType.None)
             return "";
-        if (Symbols.TryGetValue(piece.Key, out var s))
-            return s;
+
+        if (Symbols.ContainsKey(piece.Key))
+            return Symbols[piece.Key];
+
         return "";
     }
 
@@ -120,11 +147,11 @@
     // ---------- Init ------------ //
     void InitNewGame()
     {
-         // Black (top, row 0)
+         // Blue (top, row 0)
         PlacePiece(0, 0, "blue_chariot"); PlacePiece(0, 1, "blue_horse"); PlacePiece(0, 2, "blue_elephant"); PlacePiece(0, 3, "blue_advisor"); PlacePiece(0, 4, "blue_king"); PlacePiece(0, 5, "blue_advisor"); PlacePiece(0, 6, "blue_elephant"); PlacePiece(0, 7, "blue_horse"); PlacePiece(0, 8, "blue_chariot");
-        // Black cannons
+        // Blue cannons
         PlacePiece(2, 1, "blue_cannon"); PlacePiece(2, 7, "blue_cannon");
-        // Black pawns
+        // Blue pawns
         for (int c = 0; c < cols; c += 2)
             PlacePiece(3, c, "blue_pawn");
 
@@ -132,7 +159,7 @@
         PlacePiece(9, 0, "red_chariot"); PlacePiece(9, 1, "red_horse"); PlacePiece(9, 2, "red_elephant"); PlacePiece(9, 3, "red_advisor"); PlacePiece(9, 4, "red_king"); PlacePiece(9, 5, "red_advisor"); PlacePiece(9, 6, "red_elephant"); PlacePiece(9, 7, "red_horse"); PlacePiece(9, 8, "red_chariot");
         // Red cannons
         PlacePiece(7, 1, "red_cannon"); PlacePiece(7, 7, "red_cannon");
-        // Red pawns
+        // Red prawns
         for (int c = 0; c < cols; c += 2)
             PlacePiece(6, c, "red_pawn");
     }
@@ -160,17 +187,21 @@
             }
         }
 
-        // If same cell clicked, clear selection
+        // No self-own
         if (selectedIndex == index)
         {
             selectedIndex = -1;
+            legalMoves.Clear();
             return;
         }
 
-        // Move piece from selectedIndex to index
-        MovePiece(selectedIndex, index);
-        selectedIndex = -1;
+        // Move to destination unless verboten
+        if (legalMoves.Contains(index))
+        {
+            MovePiece(selectedIndex, index);
+        }
 
+        selectedIndex = -1;
         legalMoves.Clear();
     }
 
@@ -178,25 +209,18 @@
     {
         if (fromIndex < 0 || toIndex < 0)
             return;
+
         var piece = pieces[fromIndex];
+        var targetPiece = pieces[toIndex];
+
         if (piece == null || piece.Type == PieceType.None)
             return;
+
         pieces[toIndex] = piece;
         pieces[fromIndex] = KeyToPiece["empty"];
     }
 
-    @* void PlacePiece(int row, int col, string key)
-    {
-        if (row < 0 || row >= rows || col < 0 || col >= cols)
-            return;
-        int index = GetIndex(row, col);
-        if (index < 0 || index >= pieces.Count)
-            return;
-        if (!KeyToPiece.TryGetValue(key, out var piece))
-            piece = KeyToPiece["empty"];
-        pieces[index] = piece;
-    } *@
-    void PlacePiece(int row, int col, string key)
+    void PlacePiece(int row, int col, string key)       // used by InitNewGame() - places a piece on the board and gives it a type
     {
         if (row < 0 || row >= rows || col < 0 || col >= cols)
             return;
@@ -220,7 +244,7 @@
         pieces[index] = piece;
     }
 
-    // Piece move types
+    // Piece movetypes
     void GenerateLegalMoves(int index)
     {
         legalMoves.Clear();
@@ -253,11 +277,11 @@
 
             case PieceType.Advisor:
                 GenerateAdvisorMoves(index);
-                break;
+                break; *@
 
             case PieceType.Elephant:
                 GenerateElephantMoves(index);
-                break; *@
+                break;
         }
     }
 
@@ -268,10 +292,10 @@
 
         var piece = pieces[index];
 
-        int forwardDirection = piece.Color == PieceColor.Red ? -1 : 1;
+        int forwardDirection = piece.Color == PieceColor.Red ? -1 : 1;      // move up if red, otherwise move down
 
         // Forward move
-        AddMoveIfValid(row + forwardDirection, col);
+        AddMoveIfValid(index, row + forwardDirection, col);
 
         bool crossedRiver =
             (piece.Color == PieceColor.Red && row <= 4) ||
@@ -279,9 +303,26 @@
 
         if (crossedRiver)
         {
-            AddMoveIfValid(row, col - 1); // left
-            AddMoveIfValid(row, col + 1); // right
+            AddMoveIfValid(index, row, col - 1); // left
+            AddMoveIfValid(index, row, col + 1); // right
         }
+    }
+
+    void GenerateElephantMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        if (!CheckIfOccupied(row - 1, col - 1))
+            AddMoveIfValid(index, row - 2, col - 2);
+        if (!CheckIfOccupied(row + 1, col - 1))
+            AddMoveIfValid(index, row + 2, col - 2);
+        if (!CheckIfOccupied(row + 1, col + 1))
+            AddMoveIfValid(index, row + 2, col + 2);
+        if (!CheckIfOccupied(row - 1, col + 1))
+            AddMoveIfValid(index, row - 2, col + 2);
     }
 }
 
@@ -289,32 +330,24 @@
     .xiangqi { border-collapse: collapse; margin: 8px; }
     .xiangqi th, .xiangqi td { border: 1px solid #333; width: 44px; text-align: center; vertical-align: middle; }
     .xiangqi td {
-    height: 44px;          /* force cell height */
-    border: 1px solid #333;
-    width: 44px;
-    text-align: center;
-    vertical-align: middle;
+        height: 44px;          /* force cell height */
+        border: 1px solid #333;
+        width: 44px;
+        text-align: center;
+        vertical-align: middle;
     }
     .selected { outline: 3px solid gold; }
     .xiangqi td { cursor: pointer; } /* optional */
     .xiangqi th { height: 28px; font-weight: bold; }
     .row-label { width: 28px; }
-    .river td { background: #f8f8f8; }
+    .river td { background: #a3dffa; }
 
-    @* .piece { display:inline-block; width:100%; height:100%; line-height:44px; font-size:26px; } *@
     .piece { display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:26px; }
     .piece.red { color: crimson; font-weight: bold; }
     .piece.blue { color: royalblue; font-weight: bold; }
 
-/* Cell that is a possible move */
-.possible-move {
-    background-color: #ffe08a;   /* soft yellow */
-}
-
-/* Optional: make it look clickable */
-.possible-move:hover {
-    background-color: #ffd24d;
-}
+    .possible-move { background-color: #ffe08a !important; }   @* force it to override the damn river! *@
+    .possible-move:hover { background-color: #ffd24d !important; }
 </style>
 
 
