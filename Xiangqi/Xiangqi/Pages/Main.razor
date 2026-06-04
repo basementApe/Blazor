@@ -1,0 +1,177 @@
+﻿@page "/"
+
+<PageTitle>Xiangqi</PageTitle>
+
+
+@code
+{
+    int rows = 10;
+    int cols = 9;
+    List<string>? board;
+
+    readonly Dictionary<string, string> Symbols = new()
+    {
+        {"red_chariot","車"}, {"red_horse","馬"}, {"red_elephant","相"}, {"red_advisor","仕"}, {"red_king","帥"}, {"red_cannon","炮"}, {"red_pawn","兵"},
+        {"blue_chariot","車"}, {"blue_horse","馬"}, {"blue_elephant","象"}, {"blue_advisor","士"}, {"blue_king","將"}, {"blue_cannon","砲"}, {"blue_pawn","卒"},
+        {"empty",""}
+    };
+
+    @* protected override void OnInitialized()
+    {
+        board = new List<string>(rows * cols);
+        for (int i = 0; i < rows * cols; i++)
+            board.Add(Symbols["empty"]);
+        InitNewGame();
+    } *@
+    protected override void OnInitialized()
+    {
+        board = new List<string>(rows * cols);
+        for (int i = 0; i < rows * cols; i++)
+        {
+            board.Add("empty"); // store the key string
+        }
+
+        InitNewGame();
+    }
+
+    // ---------- Helpers --------- //
+    @* string GetCell(int row, int col)
+    {
+        return board[row * cols + col];
+    } *@
+    string GetCell(int row, int col)
+    {
+        int index = row * cols + col;
+        string key = board[index]; // e.g. "red_chariot" or "empty"
+
+        if (key != null && Symbols.ContainsKey(key))
+        {
+            return Symbols[key]; // return the Unicode char (or empty string for "empty")
+        }
+
+        return "";
+    }
+
+    @* void PlacePiece(int row, int col, string key)
+    {
+        int index = row * cols + col;
+        board[index] = Symbols[key];
+    } *@
+    void PlacePiece(int row, int col, string key)
+    {
+        int index = row * cols + col;
+        board[index] = key; // store "red_chariot", "blue_pawn", etc.
+    }
+
+    @* string GetPieceColorClass(int row, int col)
+    {
+        string cellValue = board[row * cols + col];
+
+        // red pieces
+        if (cellValue == Symbols["red_chariot"]
+            || cellValue == Symbols["red_horse"]
+            || cellValue == Symbols["red_pawn"]
+            || cellValue == Symbols["red_cannon"]
+            || cellValue == Symbols["red_elephant"]
+            || cellValue == Symbols["red_advisor"]
+            || cellValue == Symbols["red_king"])
+        {
+            return "red";
+        }
+
+        // blue pieces
+        if (cellValue == Symbols["blue_chariot"]
+            || cellValue == Symbols["blue_horse"]
+            || cellValue == Symbols["blue_pawn"]
+            || cellValue == Symbols["blue_cannon"]
+            || cellValue == Symbols["blue_elephant"]
+            || cellValue == Symbols["blue_advisor"]
+            || cellValue == Symbols["blue_king"])
+        {
+            return "blue";
+        }
+
+        // default
+        return "empty";
+    } *@
+    // GetPieceColorClass compares keys
+    string GetPieceColorClass(int row, int col)
+    {
+        int index = row * cols + col;
+        string key = board[index];
+
+        if (key != null && key.StartsWith("red_")) return "red";
+        if (key != null && key.StartsWith("blue_")) return "blue";
+        return "empty";
+    }
+
+    // ---------- Init ------------ //
+    void InitNewGame()
+    {
+         // Black (top, row 0)
+        PlacePiece(0, 0, "blue_chariot"); PlacePiece(0, 1, "blue_horse"); PlacePiece(0, 2, "blue_elephant"); PlacePiece(0, 3, "blue_advisor"); PlacePiece(0, 4, "blue_king"); PlacePiece(0, 5, "blue_advisor"); PlacePiece(0, 6, "blue_elephant"); PlacePiece(0, 7, "blue_horse"); PlacePiece(0, 8, "blue_chariot");
+        // Black cannons
+        PlacePiece(2, 1, "blue_cannon"); PlacePiece(2, 7, "blue_cannon");
+        // Black pawns
+        for (int c = 0; c < cols; c += 2) PlacePiece(3, c, "blue_pawn");
+
+        // Red (bottom, row 9)
+        PlacePiece(9, 0, "red_chariot"); PlacePiece(9, 1, "red_horse"); PlacePiece(9, 2, "red_elephant"); PlacePiece(9, 3, "red_advisor"); PlacePiece(9, 4, "red_king"); PlacePiece(9, 5, "red_advisor"); PlacePiece(9, 6, "red_elephant"); PlacePiece(9, 7, "red_horse"); PlacePiece(9, 8, "red_chariot");
+        // Red cannons
+        PlacePiece(7, 1, "red_cannon"); PlacePiece(7, 7, "red_cannon");
+        // Red pawns
+        for (int c = 0; c < cols; c += 2) PlacePiece(6, c, "red_pawn");
+    }
+}
+
+<style>
+    .xiangqi { border-collapse: collapse; margin: 8px; }
+    .xiangqi th, .xiangqi td { border: 1px solid #333; width: 44px; text-align: center; vertical-align: middle; }
+    .xiangqi td {
+    height: 44px;          /* force cell height */
+    border: 1px solid #333;
+    width: 44px;
+    text-align: center;
+    vertical-align: middle;
+    }
+    .xiangqi th { height: 28px; font-weight: bold; }
+    .row-label { width: 28px; }
+    .river td { background: #f8f8f8; }
+
+    @* .piece { display:inline-block; width:100%; height:100%; line-height:44px; font-size:26px; } *@
+    .piece { display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:26px; }
+    .piece.red { color: crimson; font-weight: bold; }
+    .piece.blue { color: royalblue; font-weight: bold; }
+</style>
+
+
+<div class="board-wrapper">
+    <!-- Column letters A-I -->
+    <table class="xiangqi">
+        <thead>
+            <tr>
+                <th class="row-label"></th>
+                @for (int col = 0; col < cols; col++)
+                {
+                    <th style="width:44px;text-align:center;">@((char)('A' + col))</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @for (int row = 0; row < rows; row++)
+            {
+                <tr class="board-row @(row == 4 ? "river" : "")">
+                    <td class="row-label">@((10 - row))</td>
+                    @for (int col = 0; col < cols; col++)
+                    {
+                        <td>
+                            <span class="piece @(GetPieceColorClass(row, col))">
+                                @GetCell(row, col)
+                            </span>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
