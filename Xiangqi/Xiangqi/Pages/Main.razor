@@ -1,5 +1,5 @@
 ﻿@page "/"
-
+@* @rendermode InteractiveServer *@
 <PageTitle>Xiangqi</PageTitle>
 
 
@@ -118,6 +118,8 @@
         // Move piece from selectedIndex to index
         MovePiece(selectedIndex, index);
         selectedIndex = -1;
+
+        StateHasChanged();
     }
 
     void MovePiece(int fromIndex, int toIndex)
@@ -173,10 +175,10 @@
                     <td class="row-label">@((10 - row))</td>
                     @for (int col = 0; col < cols; col++)
                     {
-                        int index = row * cols + col;
-                        string selectedClass = index == selectedIndex ? "selected" : "";
-
-                        <td class="@selectedClass" @onclick="() => CellClicked(row, col)">
+                        var renderRow = row;
+                        var renderCol = col;
+                        int index = renderRow * cols + renderCol;
+                        <td class="@(index==selectedIndex? "selected":"")" @onclick="() => CellClicked(renderRow, renderCol)">
                             <span class="piece @(GetPieceColorClass(row, col))">
                                 @GetCell(row, col)
                             </span>
