@@ -326,6 +326,21 @@
             AddMoveIfValid(index, row - 2, col + 2);
     }
 
+    bool ChariotCanMoveHere(int index, int x, int y)
+    {
+        if (IsOccupied(x, y))
+        {
+            if (IsEnemy(index, GetIndex(x, y)))    // allow capture
+            {
+                AddMoveIfValid(index, x, y);
+                return false;
+            }
+            else
+                return false;
+        }
+        return true;
+    }
+
     void GenerateChariotMoves(int index)
     {
         int row = index / cols;
@@ -335,58 +350,26 @@
 
         for (int up = row-1; up >= 0; up--)
         {
-            if (IsOccupied(up, col))
-            {
-                if (IsEnemy(index, GetIndex(up, col)))    // allow capture
-                {
-                    AddMoveIfValid(index, up, col);
-                    break;
-                }
-                else
-                    break;
-            }
+            if (!ChariotCanMoveHere(index, up, col))
+                break;
             AddMoveIfValid(index, up, col);
         }
         for (int down = row+1; down < rows; down++)
         {
-            if (IsOccupied(down, col))
-            {
-                if (IsEnemy(index, GetIndex(down, col)))    // allow capture
-                {
-                    AddMoveIfValid(index, down, col);
-                    break;
-                }
-                else
-                    break;
-            }
+            if (!ChariotCanMoveHere(index, down, col))
+                break;
             AddMoveIfValid(index, down, col);
         }
         for (int left = col-1; left > 0; left--)
         {
-            if (IsOccupied(row, left))
-            {
-                if (IsEnemy(index, GetIndex(row, left)))    // allow capture
-                {
-                    AddMoveIfValid(index, row, left);
-                    break;
-                }
-                else
-                    break;
-            }
+            if (!ChariotCanMoveHere(index, row, left))
+                break;
             AddMoveIfValid(index, row, left);
         }
         for (int right = col+1; right < cols; right++)
         {
-            if (IsOccupied(row, right))
-            {
-                if (IsEnemy(index, GetIndex(row, right)))    // allow capture
-                {
-                    AddMoveIfValid(index, row, right);
-                    break;
-                }
-                else
-                    break;
-            }
+            if (!ChariotCanMoveHere(index, row, right))
+                break;
             AddMoveIfValid(index, row, right);
         }
     }
