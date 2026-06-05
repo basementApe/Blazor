@@ -281,11 +281,11 @@
                 GeneratePawnMoves(index);
                 break;
 
-            @* case PieceType.King:
+            case PieceType.King:
                 GenerateKingMoves(index);
                 break;
 
-            case PieceType.Advisor:
+            @* case PieceType.Advisor:
                 GenerateAdvisorMoves(index);
                 break; *@
 
@@ -309,9 +309,43 @@
 
         if (CrossedRiver(piece,row))
         {
-            AddMoveIfValid(index, row, col - 1); // left
-            AddMoveIfValid(index, row, col + 1); // right
+            AddMoveIfValid(index, row, col - 1);
+            AddMoveIfValid(index, row, col + 1);
         }
+    }
+
+    bool EyeToEye(int index, int x, int y)
+    {
+        return false;
+    }
+
+    bool OutsidePalace(int index, int x, int y)
+    {
+        var piece = pieces[index];
+        if (y <= 5 && y >= 3 && x >= 7 && piece.Color == PieceColor.Red)
+            return false;
+        if (y <= 5 && y >= 3 && x <= 2 && piece.Color == PieceColor.Blue)
+            return false;
+        return true;
+    }
+
+    void GenerateKingMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        // kings can't look each other in the eye for some reason..
+        if (!EyeToEye(index, row, col+1) && !OutsidePalace(index, row, col+1))
+            AddMoveIfValid(index, row, col+1);
+        if (!EyeToEye(index, row, col-1) && !OutsidePalace(index, row, col-1))
+            AddMoveIfValid(index, row, col-1);
+        // can't go outside either
+        if (!OutsidePalace(index, row-1, col))
+            AddMoveIfValid(index, row-1, col);
+        if (!OutsidePalace(index, row+1, col))
+            AddMoveIfValid(index, row+1, col);
     }
 
     bool CannonCanShoot(int index, int x, int y)
