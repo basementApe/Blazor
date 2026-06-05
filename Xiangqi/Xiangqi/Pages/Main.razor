@@ -12,6 +12,9 @@
     const int leftDir = 2;
     const int upDir = 3;
     const int downDir = 4;
+    const int turnRed = 1;
+    const int turnBlue = -1;
+    int playerTurn = turnRed;
 
     enum PieceColor { Empty, Red, Blue }
     enum PieceType { None, Chariot, Horse, Elephant, Advisor, King, Cannon, Pawn }
@@ -145,8 +148,7 @@
 
     bool IsEnemy(int fromIndex, int toIndex)
     {
-        return pieces[toIndex].Color != pieces[fromIndex].Color
-            && pieces[toIndex].Type != PieceType.None;
+        return pieces[toIndex].Color != pieces[fromIndex].Color && pieces[toIndex].Type != PieceType.None;
     }
 
     bool CrossedRiver(Piece piece, int row)
@@ -154,9 +156,40 @@
         return (piece.Color == PieceColor.Red && row <= 4) || (piece.Color == PieceColor.Blue && row >= 5);
     }
 
+    // ---------- CSS styling helpers ----------- //
+    bool IsCurrentPlayersPiece(int index)
+    {
+        if (index < 0 || index >= pieces.Count)
+            return false;
+
+        var piece = pieces[index];
+        if (piece.Type == PieceType.None)
+            return false;
+
+        return (playerTurn == turnRed && piece.Color == PieceColor.Red) || (playerTurn == turnBlue && piece.Color == PieceColor.Blue);
+    }
+
+    bool IsPalace(int row, int col)
+    {
+        // Columns 3,4,5
+        if (col < 3 || col > 5)
+            return false;
+
+        // Blue palace
+        if (row >= 0 && row <= 2)
+            return true;
+
+        // Red palace
+        if (row >= 7 && row <= 9)
+            return true;
+
+        return false;
+    }
+
     // ---------- Init ------------ //
     void InitNewGame()
     {
+        playerTurn = turnRed;
          // Blue (top, row 0)
         PlacePiece(0, 0, "blue_chariot"); PlacePiece(0, 1, "blue_horse"); PlacePiece(0, 2, "blue_elephant"); PlacePiece(0, 3, "blue_advisor"); PlacePiece(0, 4, "blue_king"); PlacePiece(0, 5, "blue_advisor"); PlacePiece(0, 6, "blue_elephant"); PlacePiece(0, 7, "blue_horse"); PlacePiece(0, 8, "blue_chariot");
         // Blue cannons
@@ -189,6 +222,8 @@
         if (selectedIndex == -1)
         {
             var piece = pieces[index];
+            if ((playerTurn == turnRed && piece.Color == PieceColor.Blue) || (playerTurn == turnBlue && piece.Color == PieceColor.Red))
+                return;
             if (piece != null && piece.Type != PieceType.None)
             {
                 selectedIndex = index;
@@ -228,6 +263,8 @@
 
         pieces[toIndex] = piece;
         pieces[fromIndex] = KeyToPiece["empty"];
+
+        playerTurn = -playerTurn;
     }
 
     void PlacePiece(int row, int col, string key)       // used by InitNewGame() - places a piece on the board and gives it a type
@@ -327,6 +364,17 @@
                 if (pieces[i].Type != PieceType.None && pieces[i].Type != PieceType.King)       // blocked by a different piece
                     return false;
                 if (pieces[i].Type == PieceType.King && pieces[i].Color != piece.Color)         // I see you!
+                    return true;
+            }
+        }
+        if (piece.Color == PieceColor.Blue)
+        {
+            for (int d = row+1; d < rows; d++)
+            {
+                int i = d * cols + col;
+                if (pieces[i].Type != PieceType.None && pieces[i].Type != PieceType.King)
+                    return false;
+                if (pieces[i].Type == PieceType.King && pieces[i].Color != piece.Color)
                     return true;
             }
         }
@@ -432,7 +480,7 @@
                 break;
             AddMoveIfValid(index, down, col);
         }
-        for (int left = col-1; left > 0; left--)
+        for (int left = col-1; left >= 0; left--)
         {
             if (!CannonCanMoveHere(index, row, left, leftDir))
                 break;
@@ -458,6 +506,7 @@
 
         return true;
     }
+
     void GenerateElephantMoves(int index)
     {
         int row = index / cols;
@@ -509,7 +558,7 @@
                 break;
             AddMoveIfValid(index, down, col);
         }
-        for (int left = col-1; left > 0; left--)
+        for (int left = col-1; left >= 0; left--)
         {
             if (!ChariotCanMoveHere(index, row, left))
                 break;
@@ -561,18 +610,34 @@
 <style>
     .xiangqi { border-collapse: collapse; margin: 8px; }
     .xiangqi th, .xiangqi td { border: 1px solid #333; width: 44px; text-align: center; vertical-align: middle; }
-    .xiangqi td {
+    .xiangqi td
+    {
         height: 44px;          /* force cell height */
         border: 1px solid #333;
         width: 44px;
         text-align: center;
         vertical-align: middle;
     }
-    .selected { outline: 3px solid gold; }
-    .xiangqi td { cursor: pointer; } /* optional */
+    @* .selected { outline: 3px solid gold; } *@
+    @* .xiangqi td { cursor: pointer; } *@
     .xiangqi th { height: 28px; font-weight: bold; }
     .row-label { width: 28px; }
     .river td { background: #a3dffa; }
+    .field td { background: #d4d6ca; }
+
+    .xiangqi td.palace-cell
+    { box-shadow: inset 0 0 0 999px rgba(217, 195, 255, 0.267); }
+
+    .hoverable-cell {
+        cursor: pointer;
+        transition: transform 0.1s ease, outline 0.1s ease;
+    }
+
+    .hoverable-cell:hover {
+        outline: 3px solid rgba(200, 255, 0, 0.7);
+        outline-offset: -3px;
+        transform: scale(1.03);
+    }
 
     .piece { display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:26px; }
     .piece.red { color: crimson; font-weight: bold; }
@@ -598,17 +663,32 @@
         <tbody>
             @for (int row = 0; row < rows; row++)
             {
-                <tr class="board-row @((row == 4 || row == 5) ? "river" : "")">
+                <tr class="board-row @((row == 4 || row == 5) ? "river" : "field")">
                     <td class="row-label">@((10 - row))</td>
                     @for (int col = 0; col < cols; col++)
                     {
                         var renderRow = row;
                         var renderCol = col;
                         int index = renderRow * cols + renderCol;
-                        <td class="@(index == selectedIndex ? "selected" : "") @(legalMoves.Contains(index) ? "possible-move" : "")" @onclick="() => CellClicked(renderRow, renderCol)">
+                        @* <td class="@(index == selectedIndex ? "selected" : "") @(legalMoves.Contains(index) ? "possible-move" : "")" @onclick="() => CellClicked(renderRow, renderCol)"> *@
+                        @* <td class="@(index == selectedIndex ? "selected" : "") @(legalMoves.Contains(index) ? "possible-move" : "") @(IsCurrentPlayersPiece(index) ? "hoverable-cell" : "")" @onclick="() => CellClicked(renderRow, renderCol)"> *@
+                        @* <td class="@(IsPalace(renderRow, renderCol) ? "palace" : "") @(index == selectedIndex ? "selected" : "") @(legalMoves.Contains(index) ? "possible-move" : "") @(IsCurrentPlayersPiece(index) ? "hoverable-cell" : "")" @onclick="() => CellClicked(renderRow, renderCol)">
                             <span class="piece @(GetPieceColorClass(row, col))">
                                 @GetCell(row, col)
                             </span>
+                        </td> *@
+                        <td class="
+                            @(IsPalace(renderRow, renderCol) ? "palace-cell" : "")
+                            @(index == selectedIndex ? "selected" : "")
+                            @(legalMoves.Contains(index) ? "possible-move" : "")
+                            @(IsCurrentPlayersPiece(index) ? "hoverable-cell" : "")
+                        "
+                        @onclick="() => CellClicked(renderRow, renderCol)">
+                            <div class="cell-content">
+                                <span class="piece @(GetPieceColorClass(row, col))">
+                                    @GetCell(row, col)
+                                </span>
+                            </div>
                         </td>
                     }
                 </tr>
