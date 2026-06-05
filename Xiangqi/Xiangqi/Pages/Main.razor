@@ -314,17 +314,31 @@
         }
     }
 
-    bool EyeToEye(int index, int x, int y)
+    bool EyeToEye(int index, int row, int col)
     {
+        var piece = pieces[index];
+
+        // check path to enemy king
+        if (piece.Color == PieceColor.Red)
+        {
+            for (int u = row-1; u >= 0; u--)
+            {
+                int i = u * cols + col;
+                if (pieces[i].Type != PieceType.None && pieces[i].Type != PieceType.King)       // blocked by a different piece
+                    return false;
+                if (pieces[i].Type == PieceType.King && pieces[i].Color != piece.Color)         // I see you!
+                    return true;
+            }
+        }
         return false;
     }
 
-    bool OutsidePalace(int index, int x, int y)
+    bool OutsidePalace(int index, int row, int col)
     {
         var piece = pieces[index];
-        if (y <= 5 && y >= 3 && x >= 7 && piece.Color == PieceColor.Red)
+        if (col <= 5 && col >= 3 && row >= 7 && piece.Color == PieceColor.Red)
             return false;
-        if (y <= 5 && y >= 3 && x <= 2 && piece.Color == PieceColor.Blue)
+        if (col <= 5 && col >= 3 && row <= 2 && piece.Color == PieceColor.Blue)
             return false;
         return true;
     }
