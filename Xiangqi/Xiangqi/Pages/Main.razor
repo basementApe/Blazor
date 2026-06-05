@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using System.Security.AccessControl
 <PageTitle>Xiangqi</PageTitle>
 
 
@@ -7,6 +8,10 @@
     int rows = 10;
     int cols = 9;
     int selectedIndex = -1;
+    const int rightDir = 1;
+    const int leftDir = 2;
+    const int upDir = 3;
+    const int downDir = 4;
 
     enum PieceColor { Empty, Red, Blue }
     enum PieceType { None, Chariot, Horse, Elephant, Advisor, King, Cannon, Pawn }
@@ -268,9 +273,9 @@
                 GenerateHorseyMoves(index);
                 break;
 
-            @* case PieceType.Cannon:
+            case PieceType.Cannon:
                 GenerateCannonMoves(index);
-                break; *@
+                break;
 
             case PieceType.Pawn:
                 GeneratePawnMoves(index);
@@ -306,6 +311,90 @@
         {
             AddMoveIfValid(index, row, col - 1); // left
             AddMoveIfValid(index, row, col + 1); // right
+        }
+    }
+
+    bool CannonCanShoot(int index, int x, int y)
+    {
+        if (IsEnemy(index, GetIndex(x, y)))
+        {
+            AddMoveIfValid(index, x, y);
+            return true;
+        }
+        return false;
+    }
+
+    bool CannonCanMoveHere(int index, int x, int y, int dir)
+    {
+        if (IsOccupied(x, y))
+        {
+            switch(dir)
+            {
+                case upDir:
+                    for (int i = x-1; i >= 0; i--)
+                    {
+                        if (CannonCanShoot(index, i, y))
+                            return false;
+                    }
+                    break;
+                case downDir:
+                    for (int i = x+1; i < rows; i++)
+                    {
+                        if (CannonCanShoot(index, i, y))
+                            return false;
+                    }
+                    break;
+                case leftDir:
+                    for (int i = y-1; i >= 0; i--)
+                    {
+                        if (CannonCanShoot(index, x, i))
+                            return false;
+                    }
+                    break;
+                case rightDir:
+                    for (int i = y+1; i < cols; i++)
+                    {
+                        if (CannonCanShoot(index, x, i))
+                            return false;
+                    }
+                    break;
+                default: break;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    void GenerateCannonMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        for (int up = row-1; up >= 0; up--)
+        {
+            if (!CannonCanMoveHere(index, up, col, upDir))
+                break;
+            AddMoveIfValid(index, up, col);
+        }
+        for (int down = row+1; down < rows; down++)
+        {
+            if (!CannonCanMoveHere(index, down, col, downDir))
+                break;
+            AddMoveIfValid(index, down, col);
+        }
+        for (int left = col-1; left > 0; left--)
+        {
+            if (!CannonCanMoveHere(index, row, left, leftDir))
+                break;
+            AddMoveIfValid(index, row, left);
+        }
+        for (int right = col+1; right < cols; right++)
+        {
+            if (!CannonCanMoveHere(index, row, right, rightDir))
+                break;
+            AddMoveIfValid(index, row, right);
         }
     }
 
@@ -461,7 +550,7 @@
         <tbody>
             @for (int row = 0; row < rows; row++)
             {
-                <tr class="board-row @(row == 4 ? "river" : "")">
+                <tr class="board-row @((row == 4 || row == 5) ? "river" : "")">
                     <td class="row-label">@((10 - row))</td>
                     @for (int col = 0; col < cols; col++)
                     {
