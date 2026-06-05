@@ -333,28 +333,60 @@
 
         var piece = pieces[index];
 
-        for (int up = row-1; up > 0; up--)
+        for (int up = row-1; up >= 0; up--)
         {
             if (IsOccupied(up, col))
-                break;
+            {
+                if (IsEnemy(index, GetIndex(up, col)))    // allow capture
+                {
+                    AddMoveIfValid(index, up, col);
+                    break;
+                }
+                else
+                    break;
+            }
             AddMoveIfValid(index, up, col);
         }
         for (int down = row+1; down < rows; down++)
         {
             if (IsOccupied(down, col))
-                break;
+            {
+                if (IsEnemy(index, GetIndex(down, col)))    // allow capture
+                {
+                    AddMoveIfValid(index, down, col);
+                    break;
+                }
+                else
+                    break;
+            }
             AddMoveIfValid(index, down, col);
         }
         for (int left = col-1; left > 0; left--)
         {
             if (IsOccupied(row, left))
-                break;
+            {
+                if (IsEnemy(index, GetIndex(row, left)))    // allow capture
+                {
+                    AddMoveIfValid(index, row, left);
+                    break;
+                }
+                else
+                    break;
+            }
             AddMoveIfValid(index, row, left);
         }
         for (int right = col+1; right < cols; right++)
         {
             if (IsOccupied(row, right))
-                break;
+            {
+                if (IsEnemy(index, GetIndex(row, right)))    // allow capture
+                {
+                    AddMoveIfValid(index, row, right);
+                    break;
+                }
+                else
+                    break;
+            }
             AddMoveIfValid(index, row, right);
         }
     }
