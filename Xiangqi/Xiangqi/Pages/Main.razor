@@ -70,7 +70,7 @@
         legalMoves.Add(moveIndex);
     }
 
-    bool CheckIfOccupied(int row, int col)      // some pieces can't move if their path is blocked while the cannon *needs* to be blocked to be able to capture
+    bool IsOccupied(int row, int col)      // some pieces can't move if their path is blocked while the cannon *needs* to be blocked to be able to capture
     {
         if (row < 0 || row >= rows || col < 0 || col >= cols)
             return true;
@@ -142,6 +142,11 @@
     {
         return pieces[toIndex].Color != pieces[fromIndex].Color
             && pieces[toIndex].Type != PieceType.None;
+    }
+
+    bool CrossedRiver(Piece piece, int row)
+    {
+        return (piece.Color == PieceColor.Red && row <= 4) || (piece.Color == PieceColor.Blue && row >= 5);
     }
 
     // ---------- Init ------------ //
@@ -255,11 +260,11 @@
 
         switch (piece.Type)
         {
-            @* case PieceType.Chariot:
+            case PieceType.Chariot:
                 GenerateChariotMoves(index);
                 break;
 
-            case PieceType.Horse:
+            @* case PieceType.Horse:
                 GenerateHorseMoves(index);
                 break;
 
@@ -297,11 +302,7 @@
         // Forward move
         AddMoveIfValid(index, row + forwardDirection, col);
 
-        bool crossedRiver =
-            (piece.Color == PieceColor.Red && row <= 4) ||
-            (piece.Color == PieceColor.Blue && row >= 5);
-
-        if (crossedRiver)
+        if (CrossedRiver(piece,row))
         {
             AddMoveIfValid(index, row, col - 1); // left
             AddMoveIfValid(index, row, col + 1); // right
@@ -315,16 +316,39 @@
 
         var piece = pieces[index];
 
-        if (!CheckIfOccupied(row - 1, col - 1))
+        if (!IsOccupied(row - 1, col - 1))
             AddMoveIfValid(index, row - 2, col - 2);
-        if (!CheckIfOccupied(row + 1, col - 1))
+        if (!IsOccupied(row + 1, col - 1))
             AddMoveIfValid(index, row + 2, col - 2);
-        if (!CheckIfOccupied(row + 1, col + 1))
+        if (!IsOccupied(row + 1, col + 1))
             AddMoveIfValid(index, row + 2, col + 2);
-        if (!CheckIfOccupied(row - 1, col + 1))
+        if (!IsOccupied(row - 1, col + 1))
             AddMoveIfValid(index, row - 2, col + 2);
     }
+
+    void GenerateChariotMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        for (int up = row-1; up > 0; up--)
+        {
+            Console.WriteLine(up + " " + rows);
+            if (IsOccupied(up, col))
+                break;
+            AddMoveIfValid(index, up, col);
+        }
+        for (int down = row+1; down < rows; down++)
+        {
+            if (IsOccupied(down, col))
+                break;
+            AddMoveIfValid(index, down, col);
+        }
+    }
 }
+
 
 <style>
     .xiangqi { border-collapse: collapse; margin: 8px; }
