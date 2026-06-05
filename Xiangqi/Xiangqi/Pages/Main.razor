@@ -309,6 +309,18 @@
         }
     }
 
+    bool ElephantCanMoveHere(int index, int x, int y)
+    {
+        var piece = pieces[index];
+
+        // elephants can't cross the river
+        if (piece.Color == PieceColor.Red && x < 5)
+            return false;
+        if (piece.Color == PieceColor.Blue && x > 5)
+            return false;
+
+        return true;
+    }
     void GenerateElephantMoves(int index)
     {
         int row = index / cols;
@@ -316,13 +328,13 @@
 
         var piece = pieces[index];
 
-        if (!IsOccupied(row - 1, col - 1))
+        if (!IsOccupied(row - 1, col - 1) && ElephantCanMoveHere(index, row - 2, col - 2))
             AddMoveIfValid(index, row - 2, col - 2);
-        if (!IsOccupied(row + 1, col - 1))
+        if (!IsOccupied(row + 1, col - 1) && ElephantCanMoveHere(index, row + 2, col - 2))
             AddMoveIfValid(index, row + 2, col - 2);
-        if (!IsOccupied(row + 1, col + 1))
+        if (!IsOccupied(row + 1, col + 1) && ElephantCanMoveHere(index, row + 2, col + 2))
             AddMoveIfValid(index, row + 2, col + 2);
-        if (!IsOccupied(row - 1, col + 1))
+        if (!IsOccupied(row - 1, col + 1) && ElephantCanMoveHere(index, row - 2, col + 2))
             AddMoveIfValid(index, row - 2, col + 2);
     }
 
