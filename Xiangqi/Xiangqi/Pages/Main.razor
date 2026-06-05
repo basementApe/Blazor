@@ -335,7 +335,6 @@
 
         for (int up = row-1; up > 0; up--)
         {
-            Console.WriteLine(up + " " + rows);
             if (IsOccupied(up, col))
                 break;
             AddMoveIfValid(index, up, col);
@@ -345,6 +344,18 @@
             if (IsOccupied(down, col))
                 break;
             AddMoveIfValid(index, down, col);
+        }
+        for (int left = col-1; left > 0; left--)
+        {
+            if (IsOccupied(row, left))
+                break;
+            AddMoveIfValid(index, row, left);
+        }
+        for (int right = col+1; right < cols; right++)
+        {
+            if (IsOccupied(row, right))
+                break;
+            AddMoveIfValid(index, row, right);
         }
     }
 }

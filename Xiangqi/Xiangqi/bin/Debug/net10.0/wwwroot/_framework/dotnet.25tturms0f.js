@@ -5,7 +5,7 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
   "mainAssemblyName": "Xiangqi",
   "applicationEnvironment": "Development",
   "resources": {
-    "hash": "sha256-YflwoJRuyJgR3Up/g0aR+/ALCCOb26XUcuMQpmHrzTQ=",
+    "hash": "sha256-egXBAN7S3zFkjhd4AGgeCEbYxqYnrXnP6BuJ+tqnZDM=",
     "jsModuleNative": [
       {
         "name": "dotnet.native.rjbmzc4jpg.js"
@@ -1242,16 +1242,16 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
       },
       {
         "virtualPath": "Xiangqi.wasm",
-        "name": "Xiangqi.ugyl3uvvmt.wasm",
-        "hash": "sha256-QpNdamCwhYSQnCyRY+uKXMsctPxQDbxfESGm8PtQ6A4=",
+        "name": "Xiangqi.ca09yf3zyb.wasm",
+        "hash": "sha256-TKi0XC52H7zplT9PypRVrfKsm4q2bFRQ4nDApf9u+2w=",
         "cache": "force-cache"
       }
     ],
     "pdb": [
       {
         "virtualPath": "Xiangqi.pdb",
-        "name": "Xiangqi.c2dqj2e7hr.pdb",
-        "hash": "sha256-pJ9itRkI8fMkG5Z4KIsnHA29YwIJPc5JBALl+LgpZEs=",
+        "name": "Xiangqi.qk26uf9vjp.pdb",
+        "hash": "sha256-ihxd0dTYpudi0BUoGjRvXunR2Yf6jghhlVSibeOX+zE=",
         "cache": "force-cache"
       }
     ],
