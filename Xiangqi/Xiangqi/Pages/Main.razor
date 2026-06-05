@@ -264,11 +264,11 @@
                 GenerateChariotMoves(index);
                 break;
 
-            @* case PieceType.Horse:
-                GenerateHorseMoves(index);
+            case PieceType.Horse:
+                GenerateHorseyMoves(index);
                 break;
 
-            case PieceType.Cannon:
+            @* case PieceType.Cannon:
                 GenerateCannonMoves(index);
                 break; *@
 
@@ -371,6 +371,39 @@
             if (!ChariotCanMoveHere(index, row, right))
                 break;
             AddMoveIfValid(index, row, right);
+        }
+    }
+
+    void GenerateHorseyMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        // check up and left/right
+        if (!IsOccupied(row - 1, col))      // unlike knights, xiangqi horses can be blocked by pieces right in front of them
+        {
+            AddMoveIfValid(index, row-2, col-1);
+            AddMoveIfValid(index, row-2, col+1);
+        }
+        // down
+        if (!IsOccupied(row + 1, col))
+        {
+            AddMoveIfValid(index, row+2, col-1);
+            AddMoveIfValid(index, row+2, col+1);
+        }
+        // left
+        if (!IsOccupied(row, col-1))
+        {
+            AddMoveIfValid(index, row-1, col-2);
+            AddMoveIfValid(index, row+1, col-2);
+        }
+        // right
+        if (!IsOccupied(row, col+1))
+        {
+            AddMoveIfValid(index, row-1, col+2);
+            AddMoveIfValid(index, row+1, col+2);
         }
     }
 }
