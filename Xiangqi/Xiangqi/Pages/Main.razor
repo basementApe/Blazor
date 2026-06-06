@@ -332,24 +332,8 @@
         }
     }
 
-    void GeneratePawnMoves(int index)
-    {
-        int row = index / cols;
-        int col = index % cols;
 
-        var piece = pieces[index];
-
-        int forwardDirection = piece.Color == PieceColor.Red ? -1 : 1;      // move up if red, otherwise move down
-
-        // Forward move
-        AddMoveIfValid(index, row + forwardDirection, col);
-
-        if (CrossedRiver(piece,row))
-        {
-            AddMoveIfValid(index, row, col - 1);
-            AddMoveIfValid(index, row, col + 1);
-        }
-    }
+    // ---------- Move helpers ----------- //
 
     bool EyeToEye(int index, int row, int col)
     {
@@ -389,42 +373,6 @@
         if (col <= 5 && col >= 3 && row <= 2 && piece.Color == PieceColor.Blue)
             return false;
         return true;
-    }
-
-    void GenerateKingMoves(int index)
-    {
-        int row = index / cols;
-        int col = index % cols;
-
-        var piece = pieces[index];
-
-        // kings can't look each other in the eye for some reason..
-        if (!EyeToEye(index, row, col+1) && !OutsidePalace(index, row, col+1))
-            AddMoveIfValid(index, row, col+1);
-        if (!EyeToEye(index, row, col-1) && !OutsidePalace(index, row, col-1))
-            AddMoveIfValid(index, row, col-1);
-        // can't go outside either
-        if (!OutsidePalace(index, row-1, col))
-            AddMoveIfValid(index, row-1, col);
-        if (!OutsidePalace(index, row+1, col))
-            AddMoveIfValid(index, row+1, col);
-    }
-
-    void GenerateAdvisorMoves(int index)
-    {
-        int row = index / cols;
-        int col = index % cols;
-
-        var piece = pieces[index];
-
-        if (!OutsidePalace(index, row-1, col-1))
-            AddMoveIfValid(index, row - 1, col - 1);
-        if (!OutsidePalace(index, row+1, col-1))
-            AddMoveIfValid(index, row + 1, col - 1);
-        if (!OutsidePalace(index, row+1, col+1))
-            AddMoveIfValid(index, row + 1, col + 1);
-        if (!OutsidePalace(index, row-1, col+1))
-            AddMoveIfValid(index, row - 1, col + 1);
     }
 
     bool CannonCanShoot(int index, int x, int y)
@@ -478,6 +426,92 @@
         return true;
     }
 
+    bool ElephantCanMoveHere(int index, int x, int y)
+    {
+        var piece = pieces[index];
+
+        // elephants can't cross the river
+        if (piece.Color == PieceColor.Red && x < 5)
+            return false;
+        if (piece.Color == PieceColor.Blue && x > 5)
+            return false;
+
+        return true;
+    }
+
+    bool ChariotCanMoveHere(int index, int x, int y)
+    {
+        if (IsOccupied(x, y))
+        {
+            if (IsEnemy(index, GetIndex(x, y)))    // allow capture
+            {
+                AddMoveIfValid(index, x, y);
+                return false;
+            }
+            else
+                return false;
+        }
+        return true;
+    }
+
+
+    // ---------- Generate moves by piece type ----------- //
+
+    void GeneratePawnMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        int forwardDirection = piece.Color == PieceColor.Red ? -1 : 1;      // move up if red, otherwise move down
+
+        // Forward move
+        AddMoveIfValid(index, row + forwardDirection, col);
+
+        if (CrossedRiver(piece,row))
+        {
+            AddMoveIfValid(index, row, col - 1);
+            AddMoveIfValid(index, row, col + 1);
+        }
+    }
+
+    void GenerateKingMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        // kings can't look each other in the eye for some reason..
+        if (!EyeToEye(index, row, col+1) && !OutsidePalace(index, row, col+1))
+            AddMoveIfValid(index, row, col+1);
+        if (!EyeToEye(index, row, col-1) && !OutsidePalace(index, row, col-1))
+            AddMoveIfValid(index, row, col-1);
+        // can't go outside either
+        if (!OutsidePalace(index, row-1, col))
+            AddMoveIfValid(index, row-1, col);
+        if (!OutsidePalace(index, row+1, col))
+            AddMoveIfValid(index, row+1, col);
+    }
+
+    void GenerateAdvisorMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        if (!OutsidePalace(index, row-1, col-1))
+            AddMoveIfValid(index, row - 1, col - 1);
+        if (!OutsidePalace(index, row+1, col-1))
+            AddMoveIfValid(index, row + 1, col - 1);
+        if (!OutsidePalace(index, row+1, col+1))
+            AddMoveIfValid(index, row + 1, col + 1);
+        if (!OutsidePalace(index, row-1, col+1))
+            AddMoveIfValid(index, row - 1, col + 1);
+    }
+
     void GenerateCannonMoves(int index)
     {
         int row = index / cols;
@@ -511,19 +545,6 @@
         }
     }
 
-    bool ElephantCanMoveHere(int index, int x, int y)
-    {
-        var piece = pieces[index];
-
-        // elephants can't cross the river
-        if (piece.Color == PieceColor.Red && x < 5)
-            return false;
-        if (piece.Color == PieceColor.Blue && x > 5)
-            return false;
-
-        return true;
-    }
-
     void GenerateElephantMoves(int index)
     {
         int row = index / cols;
@@ -539,21 +560,6 @@
             AddMoveIfValid(index, row + 2, col + 2);
         if (!IsOccupied(row - 1, col + 1) && ElephantCanMoveHere(index, row - 2, col + 2))
             AddMoveIfValid(index, row - 2, col + 2);
-    }
-
-    bool ChariotCanMoveHere(int index, int x, int y)
-    {
-        if (IsOccupied(x, y))
-        {
-            if (IsEnemy(index, GetIndex(x, y)))    // allow capture
-            {
-                AddMoveIfValid(index, x, y);
-                return false;
-            }
-            else
-                return false;
-        }
-        return true;
     }
 
     void GenerateChariotMoves(int index)
@@ -623,6 +629,7 @@
     }
 }
 
+// ----------------- CSS / Html ------------------- //
 
 <style>
     .xiangqi { border-collapse: collapse; margin: 8px; }
@@ -640,10 +647,10 @@
     .xiangqi th { height: 28px; font-weight: bold; }
     .row-label { width: 28px; }
     .river td { background: #a3dffa; }
-    .field td { background: #d4d6ca; }
+    .field td { background: #cfd6a8; }
 
     .xiangqi td.palace-cell
-    { box-shadow: inset 0 0 0 999px rgba(217, 195, 255, 0.267); }
+    { box-shadow: inset 0 0 0 999px rgba(163, 110, 255, 0.192); }
 
     .hoverable-cell {
         cursor: pointer;
