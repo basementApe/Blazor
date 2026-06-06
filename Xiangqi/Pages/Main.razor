@@ -1,0 +1,735 @@
+﻿@page "/"
+@using System.Security.AccessControl
+<PageTitle>Xiangqi</PageTitle>
+
+
+@code
+{
+    int rows = 10;
+    int cols = 9;
+    int selectedIndex = -1;
+    const int rightDir = 1;
+    const int leftDir = 2;
+    const int upDir = 3;
+    const int downDir = 4;
+    const int turnRed = 1;
+    const int turnBlue = -1;
+    int playerTurn = turnRed;
+
+    enum PieceColor { Empty, Red, Blue }
+    enum PieceType { None, Chariot, Horse, Elephant, Advisor, King, Cannon, Pawn }
+
+    record Piece(PieceType Type, PieceColor Color, string Key);
+    List<Piece> pieces; // length rows*cols
+    HashSet<int> legalMoves = new HashSet<int>();
+
+    static readonly Dictionary<string, string> Symbols = new Dictionary<string, string>()
+    {
+        {"red_chariot","車"}, {"red_horse","馬"}, {"red_elephant","相"}, {"red_advisor","仕"}, {"red_king","帥"}, {"red_cannon","炮"}, {"red_pawn","兵"},
+        {"blue_chariot","車"}, {"blue_horse","馬"}, {"blue_elephant","象"}, {"blue_advisor","士"}, {"blue_king","將"}, {"blue_cannon","砲"}, {"blue_pawn","卒"},
+        {"empty",""}
+    };
+
+    static readonly Dictionary<string, Piece> KeyToPiece = new Dictionary<string, Piece>()
+    {
+        { "empty", new Piece(PieceType.None, PieceColor.Empty, "empty") },
+
+        { "red_chariot", new Piece(PieceType.Chariot, PieceColor.Red, "red_chariot") },
+        { "red_horse",   new Piece(PieceType.Horse,   PieceColor.Red, "red_horse") },
+        { "red_elephant",new Piece(PieceType.Elephant,PieceColor.Red, "red_elephant") },
+        { "red_advisor", new Piece(PieceType.Advisor, PieceColor.Red, "red_advisor") },
+        { "red_king",    new Piece(PieceType.King,    PieceColor.Red, "red_king") },
+        { "red_cannon",  new Piece(PieceType.Cannon,  PieceColor.Red, "red_cannon") },
+        { "red_pawn",    new Piece(PieceType.Pawn,    PieceColor.Red, "red_pawn") },
+
+        { "blue_chariot", new Piece(PieceType.Chariot, PieceColor.Blue, "blue_chariot") },
+        { "blue_horse",   new Piece(PieceType.Horse,   PieceColor.Blue, "blue_horse") },
+        { "blue_elephant",new Piece(PieceType.Elephant,PieceColor.Blue, "blue_elephant") },
+        { "blue_advisor", new Piece(PieceType.Advisor, PieceColor.Blue, "blue_advisor") },
+        { "blue_king",    new Piece(PieceType.King,    PieceColor.Blue, "blue_king") },
+        { "blue_cannon",  new Piece(PieceType.Cannon,  PieceColor.Blue, "blue_cannon") },
+        { "blue_pawn",    new Piece(PieceType.Pawn,    PieceColor.Blue, "blue_pawn") },
+    };
+
+    protected override void OnInitialized()
+    {
+        pieces = new List<Piece>(rows * cols);
+        for (int i = 0; i < rows * cols; i++)
+            pieces.Add(KeyToPiece["empty"]);
+
+        InitNewGame();
+    }
+
+    // ---------- Helpers --------- //
+
+    void AddMoveIfValid(int fromIndex, int row, int col)
+    {
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return;
+
+        int moveIndex = GetIndex(row, col);
+
+        Piece fromPiece = pieces[fromIndex];
+        Piece targetPiece = pieces[moveIndex];
+
+        if (fromPiece.Color == targetPiece.Color)   // same team!
+            return;
+
+        legalMoves.Add(moveIndex);
+    }
+
+    bool IsOccupied(int row, int col)      // some pieces can't move if their path is blocked while the cannon *needs* to be blocked to be able to capture
+    {
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return true;
+
+        int moveIndex = GetIndex(row, col);
+
+        Piece targetPiece = pieces[moveIndex];
+
+        if (targetPiece.Type != PieceType.None)
+            return true;
+
+        return false;
+    }
+
+    string GetCell(int row, int col)
+    {
+        int index = GetIndex(row, col);
+
+        if (index < 0 || index >= pieces.Count)
+            return "";
+
+        Piece piece = pieces[index];
+
+        if (piece.Type == PieceType.None)
+            return "";
+
+        if (Symbols.ContainsKey(piece.Key))
+            return Symbols[piece.Key];
+
+        return "";
+    }
+
+    // GetPieceColorClass compares keys
+    string GetPieceColorClass(int row, int col)
+    {
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return "empty";
+
+        int index = GetIndex(row, col);
+        if (index < 0 || index >= pieces.Count)
+            return "empty";
+
+        var piece = pieces[index];
+        if (piece == null)
+            return "empty";
+
+        switch (piece.Color)
+        {
+            case PieceColor.Red:
+                return "red";
+            case PieceColor.Blue:
+                return "blue";
+            default:
+                return "empty";
+        }
+    }
+
+    int GetIndex(int row, int col)
+    {
+        return row * cols + col;
+    }
+
+    bool IsEmpty(int index)
+    {
+        return pieces[index].Type == PieceType.None;
+    }
+
+    bool IsEnemy(int fromIndex, int toIndex)
+    {
+        return pieces[toIndex].Color != pieces[fromIndex].Color && pieces[toIndex].Type != PieceType.None;
+    }
+
+    bool CrossedRiver(Piece piece, int row)
+    {
+        return (piece.Color == PieceColor.Red && row <= 4) || (piece.Color == PieceColor.Blue && row >= 5);
+    }
+
+    // ---------- CSS styling helpers ----------- //
+    bool IsCurrentPlayersPiece(int index)
+    {
+        if (index < 0 || index >= pieces.Count)
+            return false;
+
+        var piece = pieces[index];
+        if (piece.Type == PieceType.None)
+            return false;
+
+        return (playerTurn == turnRed && piece.Color == PieceColor.Red) || (playerTurn == turnBlue && piece.Color == PieceColor.Blue);
+    }
+
+    bool IsPalace(int row, int col)
+    {
+        // Columns 3,4,5
+        if (col < 3 || col > 5)
+            return false;
+
+        // Blue palace
+        if (row >= 0 && row <= 2)
+            return true;
+
+        // Red palace
+        if (row >= 7 && row <= 9)
+            return true;
+
+        return false;
+    }
+
+    // ---------- Init ------------ //
+    void InitNewGame()
+    {
+        playerTurn = turnRed;
+         // Blue (top, row 0)
+        PlacePiece(0, 0, "blue_chariot"); PlacePiece(0, 1, "blue_horse"); PlacePiece(0, 2, "blue_elephant"); PlacePiece(0, 3, "blue_advisor"); PlacePiece(0, 4, "blue_king"); PlacePiece(0, 5, "blue_advisor"); PlacePiece(0, 6, "blue_elephant"); PlacePiece(0, 7, "blue_horse"); PlacePiece(0, 8, "blue_chariot");
+        // Blue cannons
+        PlacePiece(2, 1, "blue_cannon"); PlacePiece(2, 7, "blue_cannon");
+        // Blue pawns
+        for (int c = 0; c < cols; c += 2)
+            PlacePiece(3, c, "blue_pawn");
+
+        // Red (bottom, row 9)
+        PlacePiece(9, 0, "red_chariot"); PlacePiece(9, 1, "red_horse"); PlacePiece(9, 2, "red_elephant"); PlacePiece(9, 3, "red_advisor"); PlacePiece(9, 4, "red_king"); PlacePiece(9, 5, "red_advisor"); PlacePiece(9, 6, "red_elephant"); PlacePiece(9, 7, "red_horse"); PlacePiece(9, 8, "red_chariot");
+        // Red cannons
+        PlacePiece(7, 1, "red_cannon"); PlacePiece(7, 7, "red_cannon");
+        // Red prawns
+        for (int c = 0; c < cols; c += 2)
+            PlacePiece(6, c, "red_pawn");
+    }
+
+    // ---------- inputs ----------- //
+
+    void CellClicked(int row, int col)
+    {
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return;
+        int index = GetIndex(row, col);
+        if (pieces == null)
+            return;
+        if (index < 0 || index >= pieces.Count)
+            return;
+
+        if (selectedIndex == -1)
+        {
+            var piece = pieces[index];
+            if ((playerTurn == turnRed && piece.Color == PieceColor.Blue) || (playerTurn == turnBlue && piece.Color == PieceColor.Red))
+                return;
+            if (piece != null && piece.Type != PieceType.None)
+            {
+                selectedIndex = index;
+                GenerateLegalMoves(index);
+                return;
+            }
+        }
+
+        // No self-own
+        if (selectedIndex == index)
+        {
+            selectedIndex = -1;
+            legalMoves.Clear();
+            return;
+        }
+
+        // Move to destination unless verboten
+        if (legalMoves.Contains(index))
+        {
+            MovePiece(selectedIndex, index);
+        }
+
+        selectedIndex = -1;
+        legalMoves.Clear();
+    }
+
+    void MovePiece(int fromIndex, int toIndex)
+    {
+        if (fromIndex < 0 || toIndex < 0)
+            return;
+
+        var piece = pieces[fromIndex];
+        var targetPiece = pieces[toIndex];
+
+        if (piece == null || piece.Type == PieceType.None)
+            return;
+
+        pieces[toIndex] = piece;
+        pieces[fromIndex] = KeyToPiece["empty"];
+
+        playerTurn = -playerTurn;
+    }
+
+    void PlacePiece(int row, int col, string key)       // used by InitNewGame() - places a piece on the board and gives it a type
+    {
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return;
+
+        int index = GetIndex(row, col);
+
+        if (index < 0 || index >= pieces.Count)
+            return;
+
+        Piece piece;
+
+        if (KeyToPiece.ContainsKey(key))
+        {
+            piece = KeyToPiece[key];
+        }
+        else
+        {
+            piece = KeyToPiece["empty"];
+        }
+
+        pieces[index] = piece;
+    }
+
+    // Piece movetypes
+    void GenerateLegalMoves(int index)
+    {
+        legalMoves.Clear();
+
+        var piece = pieces[index];
+        if (piece == null || piece.Type == PieceType.None)
+            return;
+
+        switch (piece.Type)
+        {
+            case PieceType.Chariot:
+                GenerateChariotMoves(index);
+                break;
+
+            case PieceType.Horse:
+                GenerateHorseyMoves(index);
+                break;
+
+            case PieceType.Cannon:
+                GenerateCannonMoves(index);
+                break;
+
+            case PieceType.Pawn:
+                GeneratePawnMoves(index);
+                break;
+
+            case PieceType.King:
+                GenerateKingMoves(index);
+                break;
+
+            case PieceType.Advisor:
+                GenerateAdvisorMoves(index);
+                break;
+
+            case PieceType.Elephant:
+                GenerateElephantMoves(index);
+                break;
+        }
+    }
+
+
+    // ---------- Move helpers ----------- //
+
+    bool TheKingSeesYou(Piece piece, int i)
+    {
+        if (pieces[i].Type != PieceType.None && pieces[i].Type != PieceType.King)       // blocked by a different piece
+            return false;
+        if (pieces[i].Type == PieceType.King && pieces[i].Color != piece.Color)         // clear view!
+            return true;
+        return false;
+    }
+
+    bool EyeToEye(int index, int row, int col)
+    {
+        var piece = pieces[index];
+
+        // check path to enemy king
+        if (piece.Color == PieceColor.Red)
+        {
+            for (int u = row-1; u >= 0; u--)
+            {
+                if (TheKingSeesYou(piece, u * cols + col))
+                    return true;
+                @* int i = u * cols + col;
+                if (pieces[i].Type != PieceType.None && pieces[i].Type != PieceType.King)       // blocked by a different piece
+                    return false;
+                if (pieces[i].Type == PieceType.King && pieces[i].Color != piece.Color)         // I see you!
+                    return true; *@
+            }
+        }
+        if (piece.Color == PieceColor.Blue)
+        {
+            for (int d = row+1; d < rows; d++)
+            {
+                if (TheKingSeesYou(piece, d * cols + col))
+                    return true;
+                @* int i = d * cols + col;
+                if (pieces[i].Type != PieceType.None && pieces[i].Type != PieceType.King)
+                    return false;
+                if (pieces[i].Type == PieceType.King && pieces[i].Color != piece.Color)
+                    return true; *@
+            }
+        }
+        return false;
+    }
+
+    bool InsidePalace(int index, int row, int col)
+    {
+        var piece = pieces[index];
+        if (col <= 5 && col >= 3 && row >= 7 && piece.Color == PieceColor.Red)
+            return true;
+        if (col <= 5 && col >= 3 && row <= 2 && piece.Color == PieceColor.Blue)
+            return true;
+        return false;
+    }
+
+    bool CannonCanShoot(int index, int x, int y)
+    {
+        if (IsEnemy(index, GetIndex(x, y)))
+        {
+            AddMoveIfValid(index, x, y);
+            return true;
+        }
+        return false;
+    }
+
+    bool CannonCanMoveHere(int index, int x, int y, int dir)
+    {
+        if (IsOccupied(x, y))
+        {
+            switch(dir)
+            {
+                case upDir:
+                    for (int i = x-1; i >= 0; i--)
+                    {
+                        if (CannonCanShoot(index, i, y))
+                            return false;
+                    }
+                    break;
+                case downDir:
+                    for (int i = x+1; i < rows; i++)
+                    {
+                        if (CannonCanShoot(index, i, y))
+                            return false;
+                    }
+                    break;
+                case leftDir:
+                    for (int i = y-1; i >= 0; i--)
+                    {
+                        if (CannonCanShoot(index, x, i))
+                            return false;
+                    }
+                    break;
+                case rightDir:
+                    for (int i = y+1; i < cols; i++)
+                    {
+                        if (CannonCanShoot(index, x, i))
+                            return false;
+                    }
+                    break;
+                default: break;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    bool ElephantCanMoveHere(int index, int x, int y)
+    {
+        var piece = pieces[index];
+
+        // elephants can't cross the river
+        if (piece.Color == PieceColor.Red && x < 5)
+            return false;
+        if (piece.Color == PieceColor.Blue && x > 5)
+            return false;
+
+        return true;
+    }
+
+    bool ChariotCanMoveHere(int index, int x, int y)
+    {
+        if (IsOccupied(x, y))
+        {
+            if (IsEnemy(index, GetIndex(x, y)))    // allow capture
+            {
+                AddMoveIfValid(index, x, y);
+                return false;
+            }
+            else
+                return false;
+        }
+        return true;
+    }
+
+
+    // ---------- Generate moves by piece type ----------- //
+
+    void GeneratePawnMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        int forwardDirection = piece.Color == PieceColor.Red ? -1 : 1;      // move up if red, otherwise move down
+
+        // Forward move
+        AddMoveIfValid(index, row + forwardDirection, col);
+
+        if (CrossedRiver(piece,row))
+        {
+            AddMoveIfValid(index, row, col - 1);
+            AddMoveIfValid(index, row, col + 1);
+        }
+    }
+
+    void GenerateKingMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        // kings can't look each other in the eye for some reason..
+        if (!EyeToEye(index, row, col+1) && InsidePalace(index, row, col+1))
+            AddMoveIfValid(index, row, col+1);
+        if (!EyeToEye(index, row, col-1) && InsidePalace(index, row, col-1))
+            AddMoveIfValid(index, row, col-1);
+        // can't go In either
+        if (InsidePalace(index, row-1, col))
+            AddMoveIfValid(index, row-1, col);
+        if (InsidePalace(index, row+1, col))
+            AddMoveIfValid(index, row+1, col);
+    }
+
+    void GenerateAdvisorMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        if (InsidePalace(index, row-1, col-1))
+            AddMoveIfValid(index, row - 1, col - 1);
+        if (InsidePalace(index, row+1, col-1))
+            AddMoveIfValid(index, row + 1, col - 1);
+        if (InsidePalace(index, row+1, col+1))
+            AddMoveIfValid(index, row + 1, col + 1);
+        if (InsidePalace(index, row-1, col+1))
+            AddMoveIfValid(index, row - 1, col + 1);
+    }
+
+    void GenerateCannonMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        for (int up = row-1; up >= 0; up--)
+        {
+            if (!CannonCanMoveHere(index, up, col, upDir))
+                break;
+            AddMoveIfValid(index, up, col);
+        }
+        for (int down = row+1; down < rows; down++)
+        {
+            if (!CannonCanMoveHere(index, down, col, downDir))
+                break;
+            AddMoveIfValid(index, down, col);
+        }
+        for (int left = col-1; left >= 0; left--)
+        {
+            if (!CannonCanMoveHere(index, row, left, leftDir))
+                break;
+            AddMoveIfValid(index, row, left);
+        }
+        for (int right = col+1; right < cols; right++)
+        {
+            if (!CannonCanMoveHere(index, row, right, rightDir))
+                break;
+            AddMoveIfValid(index, row, right);
+        }
+    }
+
+    void GenerateElephantMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        if (!IsOccupied(row - 1, col - 1) && ElephantCanMoveHere(index, row - 2, col - 2))
+            AddMoveIfValid(index, row - 2, col - 2);
+        if (!IsOccupied(row + 1, col - 1) && ElephantCanMoveHere(index, row + 2, col - 2))
+            AddMoveIfValid(index, row + 2, col - 2);
+        if (!IsOccupied(row + 1, col + 1) && ElephantCanMoveHere(index, row + 2, col + 2))
+            AddMoveIfValid(index, row + 2, col + 2);
+        if (!IsOccupied(row - 1, col + 1) && ElephantCanMoveHere(index, row - 2, col + 2))
+            AddMoveIfValid(index, row - 2, col + 2);
+    }
+
+    void GenerateChariotMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        for (int up = row-1; up >= 0; up--)
+        {
+            if (!ChariotCanMoveHere(index, up, col))
+                break;
+            AddMoveIfValid(index, up, col);
+        }
+        for (int down = row+1; down < rows; down++)
+        {
+            if (!ChariotCanMoveHere(index, down, col))
+                break;
+            AddMoveIfValid(index, down, col);
+        }
+        for (int left = col-1; left >= 0; left--)
+        {
+            if (!ChariotCanMoveHere(index, row, left))
+                break;
+            AddMoveIfValid(index, row, left);
+        }
+        for (int right = col+1; right < cols; right++)
+        {
+            if (!ChariotCanMoveHere(index, row, right))
+                break;
+            AddMoveIfValid(index, row, right);
+        }
+    }
+
+    void GenerateHorseyMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        // check up and left/right
+        if (!IsOccupied(row - 1, col))      // unlike knights, xiangqi horses can be blocked by pieces right in front of them
+        {
+            AddMoveIfValid(index, row-2, col-1);
+            AddMoveIfValid(index, row-2, col+1);
+        }
+        // down
+        if (!IsOccupied(row + 1, col))
+        {
+            AddMoveIfValid(index, row+2, col-1);
+            AddMoveIfValid(index, row+2, col+1);
+        }
+        // left
+        if (!IsOccupied(row, col-1))
+        {
+            AddMoveIfValid(index, row-1, col-2);
+            AddMoveIfValid(index, row+1, col-2);
+        }
+        // right
+        if (!IsOccupied(row, col+1))
+        {
+            AddMoveIfValid(index, row-1, col+2);
+            AddMoveIfValid(index, row+1, col+2);
+        }
+    }
+}
+
+// ----------------- CSS / Html ------------------- //
+
+<style>
+    .xiangqi { border-collapse: collapse; margin: 8px; }
+    .xiangqi th, .xiangqi td { border: 1px solid #333; width: 44px; text-align: center; vertical-align: middle; }
+    .xiangqi td
+    {
+        height: 44px;          /* force cell height */
+        border: 1px solid #333;
+        width: 44px;
+        text-align: center;
+        vertical-align: middle;
+    }
+    @* .selected { outline: 3px solid gold; } *@
+    @* .xiangqi td { cursor: pointer; } *@
+    .xiangqi th { height: 28px; font-weight: bold; }
+    .row-label { width: 28px; }
+    .river td { background: #a3dffa; }
+    .field td { background: #cfd6a8; }
+
+    .xiangqi td.palace-cell
+    { box-shadow: inset 0 0 0 999px rgba(163, 110, 255, 0.192); }
+
+    .hoverable-cell {
+        cursor: pointer;
+        transition: transform 0.1s ease, outline 0.1s ease;
+    }
+
+    .hoverable-cell:hover {
+        outline: 3px solid rgba(200, 255, 0, 0.7);
+        outline-offset: -3px;
+        transform: scale(1.03);
+    }
+
+    .piece { display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:26px; }
+    .piece.red { color: crimson; font-weight: bold; }
+    .piece.blue { color: royalblue; font-weight: bold; }
+
+    .possible-move { background-color: #ffe08a !important; }   @* force it to override the damn river! *@
+    .possible-move:hover { background-color: #ffd24d !important; }
+</style>
+
+
+<div class="board-wrapper">
+    <!-- Column letters A-I -->
+    <table class="xiangqi">
+        <thead>
+            <tr>
+                <th class="row-label"></th>
+                @for (int col = 0; col < cols; col++)
+                {
+                    <th style="width:44px;text-align:center;">@((char)('A' + col))</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @for (int row = 0; row < rows; row++)
+            {
+                <tr class="board-row @((row == 4 || row == 5) ? "river" : "field")">
+                    <td class="row-label">@((10 - row))</td>
+                    @for (int col = 0; col < cols; col++)
+                    {
+                        var renderRow = row;
+                        var renderCol = col;
+                        int index = renderRow * cols + renderCol;
+                        @* <td class="@(index == selectedIndex ? "selected" : "") @(legalMoves.Contains(index) ? "possible-move" : "")" @onclick="() => CellClicked(renderRow, renderCol)"> *@
+                        @* <td class="@(index == selectedIndex ? "selected" : "") @(legalMoves.Contains(index) ? "possible-move" : "") @(IsCurrentPlayersPiece(index) ? "hoverable-cell" : "")" @onclick="() => CellClicked(renderRow, renderCol)"> *@
+                        @* <td class="@(IsPalace(renderRow, renderCol) ? "palace" : "") @(index == selectedIndex ? "selected" : "") @(legalMoves.Contains(index) ? "possible-move" : "") @(IsCurrentPlayersPiece(index) ? "hoverable-cell" : "")" @onclick="() => CellClicked(renderRow, renderCol)">
+                            <span class="piece @(GetPieceColorClass(row, col))">
+                                @GetCell(row, col)
+                            </span>
+                        </td> *@
+                        <td class="
+                            @(IsPalace(renderRow, renderCol) ? "palace-cell" : "")
+                            @(index == selectedIndex ? "selected" : "")
+                            @(legalMoves.Contains(index) ? "possible-move" : "")
+                            @(IsCurrentPlayersPiece(index) ? "hoverable-cell" : "")
+                        "
+                        @onclick="() => CellClicked(renderRow, renderCol)">
+                            <div class="cell-content">
+                                <span class="piece @(GetPieceColorClass(row, col))">
+                                    @GetCell(row, col)
+                                </span>
+                            </div>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
