@@ -322,9 +322,9 @@
                 GenerateKingMoves(index);
                 break;
 
-            @* case PieceType.Advisor:
+            case PieceType.Advisor:
                 GenerateAdvisorMoves(index);
-                break; *@
+                break;
 
             case PieceType.Elephant:
                 GenerateElephantMoves(index);
@@ -408,6 +408,23 @@
             AddMoveIfValid(index, row-1, col);
         if (!OutsidePalace(index, row+1, col))
             AddMoveIfValid(index, row+1, col);
+    }
+
+    void GenerateAdvisorMoves(int index)
+    {
+        int row = index / cols;
+        int col = index % cols;
+
+        var piece = pieces[index];
+
+        if (!OutsidePalace(index, row-1, col-1))
+            AddMoveIfValid(index, row - 1, col - 1);
+        if (!OutsidePalace(index, row+1, col-1))
+            AddMoveIfValid(index, row + 1, col - 1);
+        if (!OutsidePalace(index, row+1, col+1))
+            AddMoveIfValid(index, row + 1, col + 1);
+        if (!OutsidePalace(index, row-1, col+1))
+            AddMoveIfValid(index, row - 1, col + 1);
     }
 
     bool CannonCanShoot(int index, int x, int y)
