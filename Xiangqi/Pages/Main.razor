@@ -1,6 +1,6 @@
 ﻿@page "/"
 @using System.Security.AccessControl
-<PageTitle>Xiangqi</PageTitle>
+<PageTitle>Xiangqi - Chinese Chess</PageTitle>
 
 
 @code
@@ -181,8 +181,67 @@
         return false;
     }
 
+    bool InCheckHorse(int i, int kingIndex)
+    {
+        int row2 = i / cols;
+        int col2 = i % cols;
+
+        int one_up = GetIndex(row2-1, col2);
+        int one_left = GetIndex(row2, col2-1);
+        int one_down = GetIndex(row2+1, col2);
+        int one_right = GetIndex(row2, col2+1);
+
+        if (one_up != -1 && pieces[one_up].Type == PieceType.None)  // check for blocking pieces first
+        {
+            int index_left = GetIndex(row2-2, col2-1);
+            int index_right = GetIndex(row2-2, col2+1);
+            if (index_left == kingIndex || index_right == kingIndex)
+                return true;
+        }
+        if (one_left != -1 && pieces[one_left].Type == PieceType.None)  // check for blocking pieces first
+        {
+            int index_up = GetIndex(row2-1, col2-2);
+            int index_down = GetIndex(row2+1, col2-2);
+            if (index_up == kingIndex || index_down == kingIndex)
+                return true;
+        }
+        if (one_down != -1 && pieces[one_down].Type == PieceType.None)  // check for blocking pieces first
+        {
+            int index_left = GetIndex(row2+2, col2-1);
+            int index_right = GetIndex(row2+2, col2+1);
+            if (index_left == kingIndex || index_right == kingIndex)
+                return true;
+        }
+        if (one_right != -1 && pieces[one_right].Type == PieceType.None)  // check for blocking pieces first
+        {
+            int index_up = GetIndex(row2-1, col2+2);
+            int index_down = GetIndex(row2+1, col2+2);
+            if (index_up == kingIndex || index_down == kingIndex)
+                return true;
+        }
+        return false;
+    }
+
+    bool InCheckPawn(int i, int kingIndex)
+    {
+        int row2 = i / cols;
+        int col2 = i % cols;
+
+        if (GetIndex(row2, col2-1) == kingIndex || GetIndex(row2, col2+1) == kingIndex)
+            return true;
+
+        if (pieces[i].Color == PieceColor.Red && GetIndex(row2-1, col2) == kingIndex)
+            return true;
+
+        if (pieces[i].Color == PieceColor.Blue && GetIndex(row2+1, col2) == kingIndex)
+            return true;
+
+        return false;
+    }
+
     bool IsKingUnderAttack(int kingIndex, PieceColor playerColor)
     {
+        attackers.Clear();
         int attackerCount = 0;  // TODO: Put attackers in a list so we can add visual indicators to attacker cells and paths to the king
         for (int i = 0; i < rows * cols; i++)
         {
@@ -209,6 +268,22 @@
                         attackerCount++;
                     }
                 }
+                else if (pieces[i].Type == PieceType.Horse)
+                {
+                    if (InCheckHorse(i, kingIndex))
+                    {
+                        attackers.Add(i);
+                        attackerCount++;
+                    }
+                }
+                else if (pieces[i].Type == PieceType.Pawn)
+                {
+                    if (InCheckPawn(i, kingIndex))
+                    {
+                        attackers.Add(i);
+                        attackerCount++;
+                    }
+                }
             }
         }
         return attackers.Count > 0;
@@ -228,7 +303,7 @@
         return kingIndex;
     }
 
-    bool CheckForKingExposed(int fromIndex, int moveIndex, int row, int col)
+    bool KingIsExposed(int fromIndex, int moveIndex, int row, int col)
     {
         var playerColor = pieces[fromIndex].Color;
 
@@ -265,7 +340,7 @@
         if (fromPiece.Color == targetPiece.Color)   // same team!
             return;
 
-        if (CheckForKingExposed(fromIndex, moveIndex, row, col))
+        if (KingIsExposed(fromIndex, moveIndex, row, col))
             return;
 
         legalMoves.Add(moveIndex);
@@ -331,13 +406,15 @@
 
     int GetIndex(int row, int col)
     {
+        if (row < 0 || row >= rows || col < 0 || col >= cols)
+            return -1;
         return row * cols + col;
     }
 
-    bool IsEmpty(int index)
+    @* bool IsEmpty(int index)
     {
         return pieces[index].Type == PieceType.None;
-    }
+    } *@
 
     bool IsEnemy(int fromIndex, int toIndex)
     {
@@ -824,7 +901,6 @@
     }
 }
 
-// ----------------- CSS / Html ------------------- //
 
 <style>
     .xiangqi { border-collapse: collapse; margin: 8px; }
@@ -873,6 +949,7 @@
     .attacker-piece {
         color: darkred !important;
         font-weight: bold;
+    }
 
     .threatened-king {
         background-color: rgba(255, 0, 0, 0.25) !important;
@@ -932,3 +1009,5 @@
         </tbody>
     </table>
 </div>
+
+Player turn: @(playerTurn == 1 ? "Red" : "Blue")
