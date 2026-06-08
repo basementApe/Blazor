@@ -62,6 +62,100 @@
 
     // ---------- Helpers --------- //
 
+    bool IsKingUnderAttack(int kingIndex, PieceColor playerColor)
+    {
+        for (int i = 0; i < rows * cols; i++)
+        {
+            if (pieces[i].Type != PieceType.None && pieces[i].Color != playerColor)       // opponent piece
+            {
+                int row2 = i / cols;
+                int col2 = i % cols;
+
+                // check for threats by piece type
+                if (pieces[i].Type == PieceType.Chariot)
+                {
+                    // should check if the opponent chariot gets a clear path to our king on moving this piece
+                    for (int u = row2-1; u >= 0; u--)
+                    {
+                        int ind = u * cols + col2;
+                        if (ind == kingIndex)
+                            return true;
+                        if (pieces[ind].Type != PieceType.None)
+                            break;
+                    }
+                    for (int d = row2+1; d < rows; d++)
+                    {
+                        int ind = d * cols + col2;
+                        if (ind == kingIndex)
+                            return true;
+                        if (pieces[ind].Type != PieceType.None)
+                            break;
+                    }
+                    for (int l = col2-1; l >= 0; l--)
+                    {
+                        int ind = row2 * cols + l;
+                        if (ind == kingIndex)
+                            return true;
+                        if (pieces[ind].Type != PieceType.None)
+                            break;
+                    }
+                    for (int r = col2+1; r < cols; r++)
+                    {
+                        int ind = row2 * cols + r;
+                        if (ind == kingIndex)
+                            return true;
+                        if (pieces[ind].Type != PieceType.None)
+                            break;
+                    }
+                }
+
+                else if (pieces[i].Type == PieceType.Pawn)
+                {
+
+                }
+            }
+        }
+        return false;
+    }
+
+    int FindKingIndex(PieceColor playerColor)
+    {
+        int kingIndex = -1;
+        for (int k = 0; k < rows * cols; k++)
+        {
+            if (pieces[k].Type == PieceType.King && playerColor == pieces[k].Color)
+            {
+                kingIndex = k;
+                break;
+            }
+        }
+        return kingIndex;
+    }
+
+    bool CheckForKingExposed(int fromIndex, int moveIndex, int row, int col)
+    {
+        var playerColor = pieces[fromIndex].Color;
+
+        var movingPiece = pieces[fromIndex];
+        var capturedPiece = pieces[moveIndex];
+
+        pieces[moveIndex] = movingPiece;
+        pieces[fromIndex] = new Piece(PieceType.None, PieceColor.Empty, "empty");//new Piece { Type = PieceType.None };
+
+        int kingIndex = FindKingIndex(playerColor);
+
+        if (movingPiece.Type == PieceType.King)
+            kingIndex = moveIndex;
+
+        bool inCheck = IsKingUnderAttack(kingIndex, playerColor);
+
+        // restore board
+        pieces[fromIndex] = movingPiece;
+        pieces[moveIndex] = capturedPiece;
+
+        return inCheck;
+    }
+
     void AddMoveIfValid(int fromIndex, int row, int col)
     {
         if (row < 0 || row >= rows || col < 0 || col >= cols)
@@ -73,6 +167,9 @@
         Piece targetPiece = pieces[moveIndex];
 
         if (fromPiece.Color == targetPiece.Color)   // same team!
+            return;
+
+        if (CheckForKingExposed(fromIndex, moveIndex, row, col))
             return;
 
         legalMoves.Add(moveIndex);
@@ -335,15 +432,6 @@
 
     // ---------- Move helpers ----------- //
 
-    bool TheKingSeesYou(Piece piece, int i)
-    {
-        if (pieces[i].Type != PieceType.None && pieces[i].Type != PieceType.King)       // blocked by a different piece
-            return false;
-        if (pieces[i].Type == PieceType.King && pieces[i].Color != piece.Color)         // clear view!
-            return true;
-        return false;
-    }
-
     bool EyeToEye(int index, int row, int col)
     {
         var piece = pieces[index];
@@ -353,39 +441,35 @@
         {
             for (int u = row-1; u >= 0; u--)
             {
-                if (TheKingSeesYou(piece, u * cols + col))
-                    return true;
-                @* int i = u * cols + col;
+                int i = u * cols + col;
                 if (pieces[i].Type != PieceType.None && pieces[i].Type != PieceType.King)       // blocked by a different piece
                     return false;
                 if (pieces[i].Type == PieceType.King && pieces[i].Color != piece.Color)         // I see you!
-                    return true; *@
+                    return true;
             }
         }
         if (piece.Color == PieceColor.Blue)
         {
             for (int d = row+1; d < rows; d++)
             {
-                if (TheKingSeesYou(piece, d * cols + col))
-                    return true;
-                @* int i = d * cols + col;
+                int i = d * cols + col;
                 if (pieces[i].Type != PieceType.None && pieces[i].Type != PieceType.King)
                     return false;
                 if (pieces[i].Type == PieceType.King && pieces[i].Color != piece.Color)
-                    return true; *@
+                    return true;
             }
         }
         return false;
     }
 
-    bool InsidePalace(int index, int row, int col)
+    bool OutsidePalace(int index, int row, int col)
     {
         var piece = pieces[index];
         if (col <= 5 && col >= 3 && row >= 7 && piece.Color == PieceColor.Red)
-            return true;
+            return false;
         if (col <= 5 && col >= 3 && row <= 2 && piece.Color == PieceColor.Blue)
-            return true;
-        return false;
+            return false;
+        return true;
     }
 
     bool CannonCanShoot(int index, int x, int y)
@@ -497,14 +581,14 @@
         var piece = pieces[index];
 
         // kings can't look each other in the eye for some reason..
-        if (!EyeToEye(index, row, col+1) && InsidePalace(index, row, col+1))
+        if (!EyeToEye(index, row, col+1) && !OutsidePalace(index, row, col+1))
             AddMoveIfValid(index, row, col+1);
-        if (!EyeToEye(index, row, col-1) && InsidePalace(index, row, col-1))
+        if (!EyeToEye(index, row, col-1) && !OutsidePalace(index, row, col-1))
             AddMoveIfValid(index, row, col-1);
-        // can't go In either
-        if (InsidePalace(index, row-1, col))
+        // can't go outside either
+        if (!OutsidePalace(index, row-1, col))
             AddMoveIfValid(index, row-1, col);
-        if (InsidePalace(index, row+1, col))
+        if (!OutsidePalace(index, row+1, col))
             AddMoveIfValid(index, row+1, col);
     }
 
@@ -515,13 +599,13 @@
 
         var piece = pieces[index];
 
-        if (InsidePalace(index, row-1, col-1))
+        if (!OutsidePalace(index, row-1, col-1))
             AddMoveIfValid(index, row - 1, col - 1);
-        if (InsidePalace(index, row+1, col-1))
+        if (!OutsidePalace(index, row+1, col-1))
             AddMoveIfValid(index, row + 1, col - 1);
-        if (InsidePalace(index, row+1, col+1))
+        if (!OutsidePalace(index, row+1, col+1))
             AddMoveIfValid(index, row + 1, col + 1);
-        if (InsidePalace(index, row-1, col+1))
+        if (!OutsidePalace(index, row-1, col+1))
             AddMoveIfValid(index, row - 1, col + 1);
     }
 
