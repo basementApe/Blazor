@@ -21,7 +21,9 @@
 
     record Piece(PieceType Type, PieceColor Color, string Key);
     List<Piece> pieces; // length rows*cols
+    List<int> attackers = new();
     HashSet<int> legalMoves = new HashSet<int>();
+    
 
     static readonly Dictionary<string, string> Symbols = new Dictionary<string, string>()
     {
@@ -61,6 +63,17 @@
     }
 
     // ---------- Helpers --------- //
+
+    bool IsAttacker(int index)
+    {
+        return attackers.Contains(index);
+    }
+
+    bool IsThreatenedKing(int index)
+    {
+        var kingIndex = FindKingIndex(playerTurn == turnRed ? PieceColor.Red : PieceColor.Blue);
+        return index == kingIndex && attackers.Count > 0;
+    }
 
     bool InCheckChariot(int i, int kingIndex)
     {
@@ -182,19 +195,23 @@
                 if (pieces[i].Type == PieceType.Chariot)
                 {
                     if (InCheckChariot(i, kingIndex))
+                    {
+                        attackers.Add(i);
                         attackerCount++;
+                    }
                 }
 
                 else if (pieces[i].Type == PieceType.Cannon)
                 {
                     if (InCheckCannon(i, kingIndex))
+                    {
+                        attackers.Add(i);
                         attackerCount++;
+                    }
                 }
             }
         }
-        if (attackerCount > 0)
-            return true;
-        return false;
+        return attackers.Count > 0;
     }
 
     int FindKingIndex(PieceColor playerColor)
@@ -219,7 +236,7 @@
         var capturedPiece = pieces[moveIndex];
 
         pieces[moveIndex] = movingPiece;
-        pieces[fromIndex] = new Piece(PieceType.None, PieceColor.Empty, "empty");//new Piece { Type = PieceType.None };
+        pieces[fromIndex] = new Piece(PieceType.None, PieceColor.Empty, "empty");
 
         int kingIndex = FindKingIndex(playerColor);
 
@@ -395,6 +412,8 @@
         if (index < 0 || index >= pieces.Count)
             return;
 
+        attackers.Clear();      // just clear this whenever we click anywhere
+
         if (selectedIndex == -1)
         {
             var piece = pieces[index];
@@ -443,7 +462,7 @@
         playerTurn = -playerTurn;
     }
 
-    void PlacePiece(int row, int col, string key)       // used by InitNewGame() - places a piece on the board and gives it a type
+    void PlacePiece(int row, int col, string key)       // used by InitNewGame()
     {
         if (row < 0 || row >= rows || col < 0 || col >= cols)
             return;
@@ -845,7 +864,22 @@
 
     .possible-move { background-color: #ffe08a !important; }   @* force it to override the damn river! *@
     .possible-move:hover { background-color: #ffd24d !important; }
-</style>
+
+    .attacker-cell {
+        background-color: rgba(255, 60, 60, 0.35) !important;
+        outline: 2px solid rgba(255, 0, 0, 0.8);
+    }
+
+    .attacker-piece {
+        color: darkred !important;
+        font-weight: bold;
+
+    .threatened-king {
+        background-color: rgba(255, 0, 0, 0.25) !important;
+        outline: 3px solid red;
+        animation: pulse 1s infinite alternate;
+    }
+}</style>
 
 
 <div class="board-wrapper">
@@ -882,6 +916,8 @@
                             @(index == selectedIndex ? "selected" : "")
                             @(legalMoves.Contains(index) ? "possible-move" : "")
                             @(IsCurrentPlayersPiece(index) ? "hoverable-cell" : "")
+                            @(IsAttacker(index) ? "attacker-cell" : "")
+                            @(IsThreatenedKing(index) ? "threatened-king" : "")
                         "
                         @onclick="() => CellClicked(renderRow, renderCol)">
                             <div class="cell-content">
