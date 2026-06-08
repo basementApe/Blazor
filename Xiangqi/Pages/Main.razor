@@ -64,107 +64,107 @@
 
     bool InCheckChariot(int i, int kingIndex)
     {
-                int row2 = i / cols;
-                int col2 = i % cols;
+        int row2 = i / cols;
+        int col2 = i % cols;
 
-                    // should check if the opponent chariot gets a clear path to our king on moving this piece
-                    for (int u = row2-1; u >= 0; u--)
-                    {
-                        int ind = u * cols + col2;
-                        if (ind == kingIndex)
-                            return true;
-                        if (pieces[ind].Type != PieceType.None)
-                            break;
-                    }
-                    for (int d = row2+1; d < rows; d++)
-                    {
-                        int ind = d * cols + col2;
-                        if (ind == kingIndex)
-                            return true;
-                        if (pieces[ind].Type != PieceType.None)
-                            break;
-                    }
-                    for (int l = col2-1; l >= 0; l--)
-                    {
-                        int ind = row2 * cols + l;
-                        if (ind == kingIndex)
-                            return true;
-                        if (pieces[ind].Type != PieceType.None)
-                            break;
-                    }
-                    for (int r = col2+1; r < cols; r++)
-                    {
-                        int ind = row2 * cols + r;
-                        if (ind == kingIndex)
-                            return true;
-                        if (pieces[ind].Type != PieceType.None)
-                            break;
-                    }
+        // should check if the opponent chariot gets a clear path to our king on moving this piece
+        for (int u = row2-1; u >= 0; u--)
+        {
+            int ind = u * cols + col2;
+            if (ind == kingIndex)
+                return true;
+            if (pieces[ind].Type != PieceType.None)
+                break;
+        }
+        for (int d = row2+1; d < rows; d++)
+        {
+            int ind = d * cols + col2;
+            if (ind == kingIndex)
+                return true;
+            if (pieces[ind].Type != PieceType.None)
+                break;
+        }
+        for (int l = col2-1; l >= 0; l--)
+        {
+            int ind = row2 * cols + l;
+            if (ind == kingIndex)
+                return true;
+            if (pieces[ind].Type != PieceType.None)
+                break;
+        }
+        for (int r = col2+1; r < cols; r++)
+        {
+            int ind = row2 * cols + r;
+            if (ind == kingIndex)
+                return true;
+            if (pieces[ind].Type != PieceType.None)
+                break;
+        }
 
         return false;
     }
 
     bool InCheckCannon(int i, int kingIndex)
     {
-                int row2 = i / cols;
-                int col2 = i % cols;
+        int row2 = i / cols;
+        int col2 = i % cols;
 
-                    int countBlockingPieces = 0;    // needs to be exactly one to come at the king!
-                    for (int u = row2-1; u >= 0; u--)
-                    {
-                        int ind = u * cols + col2;
-                        if (pieces[ind].Type != PieceType.None)
-                        {
-                            if (countBlockingPieces == 1 && ind == kingIndex)
-                                return true;
-                            countBlockingPieces++;
-                            if (countBlockingPieces > 1)
-                                break;
-                            continue;
-                        }
-                    }
-                    countBlockingPieces = 0;    // Important! Reset between directional checks
-                    for (int d = row2+1; d < rows; d++)
-                    {
-                        int ind = d * cols + col2;
-                        if (pieces[ind].Type != PieceType.None)
-                        {
-                            if (countBlockingPieces == 1 && ind == kingIndex)
-                                return true;
-                            countBlockingPieces++;
-                            if (countBlockingPieces > 1)
-                                break;
-                            continue;
-                        }
-                    }
-                    countBlockingPieces = 0;    // Important! Reset between directional checks
-                    for (int l = col2-1; l >= 0; l--)
-                    {
-                        int ind = row2 * cols + l;
-                        if (pieces[ind].Type != PieceType.None)
-                        {
-                            if (countBlockingPieces == 1 && ind == kingIndex)
-                                return true;
-                            countBlockingPieces++;
-                            if (countBlockingPieces > 1)
-                                break;
-                            continue;
-                        }
-                    }
-                    countBlockingPieces = 0;    // Important! Reset between directional checks
-                    for (int r = col2+1; r < cols; r++)
-                    {
-                        int ind = row2 * cols + r;
-                        if (pieces[ind].Type != PieceType.None)
-                        {
-                            if (countBlockingPieces == 1 && ind == kingIndex)
-                                return true;
-                            countBlockingPieces++;
-                            if (countBlockingPieces > 1)
-                                break;
-                            continue;
-                        }
-                    }
+        int countBlockingPieces = 0;    // needs to be exactly one to come at the king!
+        for (int u = row2-1; u >= 0; u--)
+        {
+            int ind = u * cols + col2;
+            if (pieces[ind].Type != PieceType.None)
+            {
+                if (countBlockingPieces == 1 && ind == kingIndex)
+                    return true;
+                countBlockingPieces++;
+                if (countBlockingPieces > 1)
+                    break;
+                continue;
+            }
+        }
+        countBlockingPieces = 0;    // Important! Reset between directional checks
+        for (int d = row2+1; d < rows; d++)
+        {
+            int ind = d * cols + col2;
+            if (pieces[ind].Type != PieceType.None)
+            {
+                if (countBlockingPieces == 1 && ind == kingIndex)
+                    return true;
+                countBlockingPieces++;
+                if (countBlockingPieces > 1)
+                    break;
+                continue;
+            }
+        }
+        countBlockingPieces = 0;    // Important! Reset between directional checks
+        for (int l = col2-1; l >= 0; l--)
+        {
+            int ind = row2 * cols + l;
+            if (pieces[ind].Type != PieceType.None)
+            {
+                if (countBlockingPieces == 1 && ind == kingIndex)
+                    return true;
+                countBlockingPieces++;
+                if (countBlockingPieces > 1)
+                    break;
+                continue;
+            }
+        }
+        countBlockingPieces = 0;    // Important! Reset between directional checks
+        for (int r = col2+1; r < cols; r++)
+        {
+            int ind = row2 * cols + r;
+            if (pieces[ind].Type != PieceType.None)
+            {
+                if (countBlockingPieces == 1 && ind == kingIndex)
+                    return true;
+                countBlockingPieces++;
+                if (countBlockingPieces > 1)
+                    break;
+                continue;
+            }
+        }
         return false;
     }
 
