@@ -462,19 +462,27 @@
         {
             if (pieces[i].Type != PieceType.None && pieces[i].Color == playerColor)
             {
-                GenerateLegalMoves(i);
+                var tempMoves = new HashSet<int>();
 
-                if (legalMoves.Count > 0)
-                {
-                    legalMoves.Clear();
+                GenerateLegalMovesForCheck(i, tempMoves);
+
+                if (tempMoves.Count > 0)
                     return true;
-                }
-
-                legalMoves.Clear();
             }
         }
 
         return false;
+    }
+
+    // use separate hashset so HasAnyLegalMove doesn't overwrite the moves from GenerateLegalMoves!
+    void GenerateLegalMovesForCheck(int index, HashSet<int> moveSet)
+    {
+        var originalLegalMoves = legalMoves;
+        legalMoves = moveSet;
+
+        GenerateLegalMoves(index);
+
+        legalMoves = originalLegalMoves;
     }
 
     bool IsCheckmate(PieceColor playerColor)
