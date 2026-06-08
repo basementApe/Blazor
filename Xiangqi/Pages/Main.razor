@@ -456,6 +456,40 @@
         return false;
     }
 
+    bool HasAnyLegalMove(PieceColor playerColor)
+    {
+        for (int i = 0; i < rows * cols; i++)
+        {
+            if (pieces[i].Type != PieceType.None && pieces[i].Color == playerColor)
+            {
+                GenerateLegalMoves(i);
+
+                if (legalMoves.Count > 0)
+                {
+                    legalMoves.Clear();
+                    return true;
+                }
+
+                legalMoves.Clear();
+            }
+        }
+
+        return false;
+    }
+
+    bool IsCheckmate(PieceColor playerColor)
+    {
+        int kingIndex = FindKingIndex(playerColor);
+
+        if (!IsKingUnderAttack(kingIndex, playerColor))
+            return false;
+
+        if (HasAnyLegalMove(playerColor))
+            return false;
+
+        return true;
+    }
+
     // ---------- Init ------------ //
     void InitNewGame()
     {
@@ -537,6 +571,21 @@
         pieces[fromIndex] = KeyToPiece["empty"];
 
         playerTurn = -playerTurn;
+
+        // Check & Checkmate
+        var currentColor = playerTurn == turnRed ? PieceColor.Red : PieceColor.Blue;
+        int kingIndex = FindKingIndex(currentColor);
+        bool inCheck = IsKingUnderAttack(kingIndex, currentColor);
+
+        if (inCheck)
+        {
+            Console.WriteLine("Check!");
+        }
+
+        if (inCheck && !HasAnyLegalMove(currentColor))
+        {
+            Console.WriteLine("Checkmate!");
+        }
     }
 
     void PlacePiece(int row, int col, string key)       // used by InitNewGame()
@@ -1011,3 +1060,5 @@
 </div>
 
 Player turn: @(playerTurn == 1 ? "Red" : "Blue")
+@(IsCheckmate(PieceColor.Red) == true ? "Checkmate! Blue wins!" : "")
+@(IsCheckmate(PieceColor.Blue) == true ? "Checkmate! Red wins!" : "")
