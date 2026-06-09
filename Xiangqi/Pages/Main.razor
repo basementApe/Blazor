@@ -474,7 +474,7 @@
         return false;
     }
 
-    // use separate hashset so HasAnyLegalMove doesn't overwrite the moves from GenerateLegalMoves!
+    // use separate hashset to store legalMoves temporarily so HasAnyLegalMove() doesn't overwrite them!
     void GenerateLegalMovesForCheck(int index, HashSet<int> moveSet)
     {
         var originalLegalMoves = legalMoves;
