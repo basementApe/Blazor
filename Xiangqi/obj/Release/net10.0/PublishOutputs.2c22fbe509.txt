@@ -1,0 +1,4 @@
+/home/erikthon/Documents/GetAcademy/emne3/Blazor/Xiangqi/bin/Release/net10.0/publish/wwwroot/index.html
+/home/erikthon/Documents/GetAcademy/emne3/Blazor/Xiangqi/bin/Release/net10.0/publish/Xiangqi.runtimeconfig.json
+/home/erikthon/Documents/GetAcademy/emne3/Blazor/Xiangqi/bin/Release/net10.0/publish/dotnet.js
+/home/erikthon/Documents/GetAcademy/emne3/Blazor/Xiangqi/bin/Release/net10.0/publish/web.config
