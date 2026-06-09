@@ -1,5 +1,8 @@
 A Chinese Chess game (Xiangqi) I wrote to acquaint myself with Blazor and get some good practice writing C#.
 
+Try it out here:
+https://basementape.github.io/Blazor/
+
 Features:
 - Full moveset for all pieces.
 - Legal move checks with visual indicators to show where a piece can move.
